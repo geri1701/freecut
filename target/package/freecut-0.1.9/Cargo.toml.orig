@@ -1,0 +1,16 @@
+[package]
+name = "freecut"
+version = "0.1.9"
+authors = ["Gerhard Schwanzer <geri@sdf.org>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "A cut optimizer gui for cutting rectangular pieces from panels"
+repository = "https://github.com/geri1701/freecut"
+keywords = ["gui", "cuts", "optimize", "optimization", "bin-packing", "bin-packer"]
+
+[dependencies]
+cut-optimizer-2d = "0.1.1"
+pdf-canvas = "0.6.0"
+rand = "0.8.3"
+comfy-table = "2.1.0"
+fltk = "^0.15"

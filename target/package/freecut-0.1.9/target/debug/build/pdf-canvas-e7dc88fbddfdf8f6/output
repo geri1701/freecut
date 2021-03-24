@@ -1,0 +1,14 @@
+cargo:rerun-if-changed=data/Courier.afm
+cargo:rerun-if-changed=data/Courier-Bold.afm
+cargo:rerun-if-changed=data/Courier-Oblique.afm
+cargo:rerun-if-changed=data/Courier-BoldOblique.afm
+cargo:rerun-if-changed=data/Helvetica.afm
+cargo:rerun-if-changed=data/Helvetica-Bold.afm
+cargo:rerun-if-changed=data/Helvetica-Oblique.afm
+cargo:rerun-if-changed=data/Helvetica-BoldOblique.afm
+cargo:rerun-if-changed=data/Times-Roman.afm
+cargo:rerun-if-changed=data/Times-Bold.afm
+cargo:rerun-if-changed=data/Times-Italic.afm
+cargo:rerun-if-changed=data/Times-BoldItalic.afm
+cargo:rerun-if-changed=data/Symbol.afm
+cargo:rerun-if-changed=data/ZapfDingbats.afm

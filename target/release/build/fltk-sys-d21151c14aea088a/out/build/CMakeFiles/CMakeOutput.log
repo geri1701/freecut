@@ -1,0 +1,958 @@
+The system is: Linux - 5.10.23-1-MANJARO - x86_64
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler: /usr/bin/cc 
+Build flags: ;-ffunction-sections;-fdata-sections;-fPIC;-m64
+Id flags:  
+
+The output was:
+0
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+
+The C compiler identification is GNU, found in "/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/3.19.7/CompilerIdC/a.out"
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+Compiler: /usr/bin/c++ 
+Build flags: ;-ffunction-sections;-fdata-sections;-fPIC;-m64
+Id flags:  
+
+The output was:
+0
+
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+
+The CXX compiler identification is GNU, found in "/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/3.19.7/CompilerIdCXX/a.out"
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c1ce1/fast && /usr/bin/make  -f CMakeFiles/cmTC_c1ce1.dir/build.make CMakeFiles/cmTC_c1ce1.dir/build
+make[1]: Entering directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64    -v -o CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.19/Modules/CMakeCCompilerABI.c
+Using built-in specs.
+COLLECT_GCC=/usr/bin/cc
+Target: x86_64-pc-linux-gnu
+Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c,c++,ada,fortran,go,lto,objc,obj-c++,d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 10.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/cc1 -quiet -v /usr/share/cmake-3.19/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccSR2MVY.s
+GNU C17 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 10.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.21-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include
+ /usr/local/include
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed
+ /usr/include
+End of search list.
+GNU C17 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 10.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.21-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: 1bfc39bab4733e0e3f89254efa5bbd30
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+ as -v --64 -o CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o /tmp/ccSR2MVY.s
+GNU assembler version 2.36.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.36.1
+COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+Linking C executable cmTC_c1ce1
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c1ce1.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64   -v -rdynamic CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -o cmTC_c1ce1 
+Using built-in specs.
+COLLECT_GCC=/usr/bin/cc
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper
+Target: x86_64-pc-linux-gnu
+Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c,c++,ada,fortran,go,lto,objc,obj-c++,d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 10.2.0 (GCC) 
+COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_c1ce1' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccFsKfmH.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_c1ce1 /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0 -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../.. CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_c1ce1' '-mtune=generic' '-march=x86-64'
+make[1]: Leaving directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp'
+
+
+
+Parsed C implicit include dir info from above output: rv=done
+  found start of include info
+  found start of implicit include info
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+    add: [/usr/local/include]
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+    add: [/usr/include]
+  end of search list found
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+  collapse include dir [/usr/local/include] ==> [/usr/local/include]
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+  collapse include dir [/usr/include] ==> [/usr/include]
+  implicit include dirs: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include;/usr/local/include;/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed;/usr/include]
+
+
+Parsed C implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command(s):/usr/bin/make cmTC_c1ce1/fast && /usr/bin/make  -f CMakeFiles/cmTC_c1ce1.dir/build.make CMakeFiles/cmTC_c1ce1.dir/build]
+  ignore line: [make[1]: Entering directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp']
+  ignore line: [Building C object CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o]
+  ignore line: [/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64    -v -o CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.19/Modules/CMakeCCompilerABI.c]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/bin/cc]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c c++ ada fortran go lto objc obj-c++ d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc]
+  ignore line: [Thread model: posix]
+  ignore line: [Supported LTO compression algorithms: zlib zstd]
+  ignore line: [gcc version 10.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/cc1 -quiet -v /usr/share/cmake-3.19/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccSR2MVY.s]
+  ignore line: [GNU C17 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 10.2.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.21-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [GNU C17 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 10.2.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.21-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [Compiler executable checksum: 1bfc39bab4733e0e3f89254efa5bbd30]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [ as -v --64 -o CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o /tmp/ccSR2MVY.s]
+  ignore line: [GNU assembler version 2.36.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.36.1]
+  ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [Linking C executable cmTC_c1ce1]
+  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c1ce1.dir/link.txt --verbose=1]
+  ignore line: [/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64   -v -rdynamic CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -o cmTC_c1ce1 ]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/bin/cc]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c c++ ada fortran go lto objc obj-c++ d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc]
+  ignore line: [Thread model: posix]
+  ignore line: [Supported LTO compression algorithms: zlib zstd]
+  ignore line: [gcc version 10.2.0 (GCC) ]
+  ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_c1ce1' '-mtune=generic' '-march=x86-64']
+  link line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccFsKfmH.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_c1ce1 /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0 -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../.. CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o]
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/ccFsKfmH.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [--build-id] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [--hash-style=gnu] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_x86_64] ==> ignore
+    arg [-export-dynamic] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+    arg [-pie] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_c1ce1] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o] ==> ignore
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0]
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib]
+    arg [-L/lib/../lib] ==> dir [/lib/../lib]
+    arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..]
+    arg [CMakeFiles/cmTC_c1ce1.dir/CMakeCCompilerABI.c.o] ==> ignore
+    arg [-lgcc] ==> lib [gcc]
+    arg [--push-state] ==> ignore
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--pop-state] ==> ignore
+    arg [-lc] ==> lib [c]
+    arg [-lgcc] ==> lib [gcc]
+    arg [--push-state] ==> ignore
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--pop-state] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o] ==> ignore
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0]
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib] ==> [/usr/lib]
+  collapse library dir [/lib/../lib] ==> [/lib]
+  collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..] ==> [/usr/lib]
+  implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+  implicit dirs: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0;/usr/lib;/lib]
+  implicit fwks: []
+
+
+Detecting CXX compiler ABI info compiled with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_21616/fast && /usr/bin/make  -f CMakeFiles/cmTC_21616.dir/build.make CMakeFiles/cmTC_21616.dir/build
+make[1]: Entering directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o
+/usr/bin/c++   -ffunction-sections -fdata-sections -fPIC -m64    -v -o CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.19/Modules/CMakeCXXCompilerABI.cpp
+Using built-in specs.
+COLLECT_GCC=/usr/bin/c++
+Target: x86_64-pc-linux-gnu
+Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c,c++,ada,fortran,go,lto,objc,obj-c++,d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 10.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake-3.19/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccsSQnQB.s
+GNU C++14 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 10.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.21-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include
+ /usr/local/include
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed
+ /usr/include
+End of search list.
+GNU C++14 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 10.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.21-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: f27fb68878a84470810fd2057eccecc9
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ as -v --64 -o CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccsSQnQB.s
+GNU assembler version 2.36.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.36.1
+COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+Linking CXX executable cmTC_21616
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_21616.dir/link.txt --verbose=1
+/usr/bin/c++  -ffunction-sections -fdata-sections -fPIC -m64   -v -rdynamic CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_21616 
+Using built-in specs.
+COLLECT_GCC=/usr/bin/c++
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper
+Target: x86_64-pc-linux-gnu
+Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c,c++,ada,fortran,go,lto,objc,obj-c++,d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 10.2.0 (GCC) 
+COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_21616' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccKVkor2.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_21616 /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0 -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../.. CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o
+COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_21616' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+make[1]: Leaving directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp'
+
+
+
+Parsed CXX implicit include dir info from above output: rv=done
+  found start of include info
+  found start of implicit include info
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0]
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu]
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward]
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+    add: [/usr/local/include]
+    add: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+    add: [/usr/include]
+  end of search list found
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0] ==> [/usr/include/c++/10.2.0]
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu] ==> [/usr/include/c++/10.2.0/x86_64-pc-linux-gnu]
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward] ==> [/usr/include/c++/10.2.0/backward]
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+  collapse include dir [/usr/local/include] ==> [/usr/local/include]
+  collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+  collapse include dir [/usr/include] ==> [/usr/include]
+  implicit include dirs: [/usr/include/c++/10.2.0;/usr/include/c++/10.2.0/x86_64-pc-linux-gnu;/usr/include/c++/10.2.0/backward;/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include;/usr/local/include;/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed;/usr/include]
+
+
+Parsed CXX implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command(s):/usr/bin/make cmTC_21616/fast && /usr/bin/make  -f CMakeFiles/cmTC_21616.dir/build.make CMakeFiles/cmTC_21616.dir/build]
+  ignore line: [make[1]: Entering directory '/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp']
+  ignore line: [Building CXX object CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o]
+  ignore line: [/usr/bin/c++   -ffunction-sections -fdata-sections -fPIC -m64    -v -o CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.19/Modules/CMakeCXXCompilerABI.cpp]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/bin/c++]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c c++ ada fortran go lto objc obj-c++ d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc]
+  ignore line: [Thread model: posix]
+  ignore line: [Supported LTO compression algorithms: zlib zstd]
+  ignore line: [gcc version 10.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/cc1plus -quiet -v -D_GNU_SOURCE /usr/share/cmake-3.19/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccsSQnQB.s]
+  ignore line: [GNU C++14 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 10.2.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.21-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [GNU C++14 (GCC) version 10.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 10.2.0  GMP version 6.2.1  MPFR version 4.1.0  MPC version 1.2.1  isl version isl-0.21-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [Compiler executable checksum: f27fb68878a84470810fd2057eccecc9]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [ as -v --64 -o CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccsSQnQB.s]
+  ignore line: [GNU assembler version 2.36.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.36.1]
+  ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-o' 'CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [Linking CXX executable cmTC_21616]
+  ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_21616.dir/link.txt --verbose=1]
+  ignore line: [/usr/bin/c++  -ffunction-sections -fdata-sections -fPIC -m64   -v -rdynamic CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_21616 ]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/bin/c++]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: /build/gcc/src/gcc/configure --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://bugs.archlinux.org/ --enable-languages=c c++ ada fortran go lto objc obj-c++ d --with-isl --with-linker-hash-style=gnu --with-system-zlib --enable-__cxa_atexit --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-install-libiberty --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-libssp --disable-libstdcxx-pch --disable-libunwind-exceptions --disable-werror gdc_include_dir=/usr/include/dlang/gdc]
+  ignore line: [Thread model: posix]
+  ignore line: [Supported LTO compression algorithms: zlib zstd]
+  ignore line: [gcc version 10.2.0 (GCC) ]
+  ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-v' '-rdynamic' '-o' 'cmTC_21616' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  link line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccKVkor2.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_21616 /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0 -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../.. CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o]
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/ccKVkor2.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [--build-id] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [--hash-style=gnu] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_x86_64] ==> ignore
+    arg [-export-dynamic] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+    arg [-pie] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_21616] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/Scrt1.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crti.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtbeginS.o] ==> ignore
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0]
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib]
+    arg [-L/lib/../lib] ==> dir [/lib/../lib]
+    arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+    arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..]
+    arg [CMakeFiles/cmTC_21616.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+    arg [-lstdc++] ==> lib [stdc++]
+    arg [-lm] ==> lib [m]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [-lc] ==> lib [c]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/crtendS.o] ==> ignore
+    arg [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib/crtn.o] ==> ignore
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0]
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../lib] ==> [/usr/lib]
+  collapse library dir [/lib/../lib] ==> [/lib]
+  collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+  collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../..] ==> [/usr/lib]
+  implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+  implicit dirs: [/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0;/usr/lib;/lib]
+  implicit fwks: []
+
+
+Determining if the include file sys/types.h exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_6175a/fast && /usr/bin/make  -f CMakeFiles/cmTC_6175a.dir/build.make CMakeFiles/cmTC_6175a.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_6175a.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_6175a.dir/CheckIncludeFile.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_6175a
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6175a.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_6175a.dir/CheckIncludeFile.c.o -o cmTC_6175a 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the include file stdint.h exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_8b458/fast && /usr/bin/make  -f CMakeFiles/cmTC_8b458.dir/build.make CMakeFiles/cmTC_8b458.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_8b458.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_8b458.dir/CheckIncludeFile.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_8b458
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8b458.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_8b458.dir/CheckIncludeFile.c.o -o cmTC_8b458 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the include file stddef.h exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_0919a/fast && /usr/bin/make  -f CMakeFiles/cmTC_0919a.dir/build.make CMakeFiles/cmTC_0919a.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_0919a.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_0919a.dir/CheckIncludeFile.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_0919a
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0919a.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_0919a.dir/CheckIncludeFile.c.o -o cmTC_0919a 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining size of unsigned short passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d6718/fast && /usr/bin/make  -f CMakeFiles/cmTC_d6718.dir/build.make CMakeFiles/cmTC_d6718.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_d6718.dir/CMAKE_SIZEOF_UNSIGNED_SHORT.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_d6718.dir/CMAKE_SIZEOF_UNSIGNED_SHORT.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckTypeSize/CMAKE_SIZEOF_UNSIGNED_SHORT.c
+Linking C executable cmTC_d6718
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d6718.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_d6718.dir/CMAKE_SIZEOF_UNSIGNED_SHORT.c.o -o cmTC_d6718 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the system is big endian passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ed3ef/fast && /usr/bin/make  -f CMakeFiles/cmTC_ed3ef.dir/build.make CMakeFiles/cmTC_ed3ef.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_ed3ef.dir/TestEndianess.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_ed3ef.dir/TestEndianess.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp/TestEndianess.c
+Linking C executable cmTC_ed3ef
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ed3ef.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_ed3ef.dir/TestEndianess.c.o -o cmTC_ed3ef 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+TestEndianess.c:
+/* A 16 bit integer is required. */
+typedef unsigned short cmakeint16;
+
+/* On a little endian machine, these 16bit ints will give "THIS IS LITTLE ENDIAN."
+   On a big endian machine the characters will be exchanged pairwise. */
+const cmakeint16 info_little[] =  {0x4854, 0x5349, 0x4920, 0x2053, 0x494c, 0x5454, 0x454c, 0x4520, 0x444e, 0x4149, 0x2e4e, 0x0000};
+
+/* on a big endian machine, these 16bit ints will give "THIS IS BIG ENDIAN."
+   On a little endian machine the characters will be exchanged pairwise. */
+const cmakeint16 info_big[] =     {0x5448, 0x4953, 0x2049, 0x5320, 0x4249, 0x4720, 0x454e, 0x4449, 0x414e, 0x2e2e, 0x0000};
+
+#ifdef __CLASSIC_C__
+int main(argc, argv) int argc; char *argv[];
+#else
+int main(int argc, char *argv[])
+#endif
+{
+  int require = 0;
+  require += info_little[argc];
+  require += info_big[argc];
+  (void)argv;
+  return require;
+}
+
+
+Determining size of short passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_2c444/fast && /usr/bin/make  -f CMakeFiles/cmTC_2c444.dir/build.make CMakeFiles/cmTC_2c444.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_2c444.dir/SIZEOF_SHORT.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_2c444.dir/SIZEOF_SHORT.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckTypeSize/SIZEOF_SHORT.c
+Linking C executable cmTC_2c444
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2c444.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_2c444.dir/SIZEOF_SHORT.c.o -o cmTC_2c444 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining size of int passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_79c2b/fast && /usr/bin/make  -f CMakeFiles/cmTC_79c2b.dir/build.make CMakeFiles/cmTC_79c2b.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_79c2b.dir/SIZEOF_INT.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_79c2b.dir/SIZEOF_INT.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckTypeSize/SIZEOF_INT.c
+Linking C executable cmTC_79c2b
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_79c2b.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_79c2b.dir/SIZEOF_INT.c.o -o cmTC_79c2b 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining size of long passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_36b8e/fast && /usr/bin/make  -f CMakeFiles/cmTC_36b8e.dir/build.make CMakeFiles/cmTC_36b8e.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_36b8e.dir/SIZEOF_LONG.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_36b8e.dir/SIZEOF_LONG.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckTypeSize/SIZEOF_LONG.c
+Linking C executable cmTC_36b8e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_36b8e.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_36b8e.dir/SIZEOF_LONG.c.o -o cmTC_36b8e 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining size of long long passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d3413/fast && /usr/bin/make  -f CMakeFiles/cmTC_d3413.dir/build.make CMakeFiles/cmTC_d3413.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_d3413.dir/HAVE_LONG_LONG.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_d3413.dir/HAVE_LONG_LONG.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckTypeSize/HAVE_LONG_LONG.c
+Linking C executable cmTC_d3413
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d3413.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_d3413.dir/HAVE_LONG_LONG.c.o -o cmTC_d3413 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files alsa/asoundlib.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_a82cf/fast && /usr/bin/make  -f CMakeFiles/cmTC_a82cf.dir/build.make CMakeFiles/cmTC_a82cf.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_a82cf.dir/HAVE_ALSA_ASOUNDLIB_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_a82cf.dir/HAVE_ALSA_ASOUNDLIB_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_ALSA_ASOUNDLIB_H.c
+Linking C executable cmTC_a82cf
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a82cf.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_a82cf.dir/HAVE_ALSA_ASOUNDLIB_H.c.o -o cmTC_a82cf 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files dlfcn.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_cea6e/fast && /usr/bin/make  -f CMakeFiles/cmTC_cea6e.dir/build.make CMakeFiles/cmTC_cea6e.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_cea6e.dir/HAVE_DLFCN_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_cea6e.dir/HAVE_DLFCN_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_DLFCN_H.c
+Linking C executable cmTC_cea6e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cea6e.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_cea6e.dir/HAVE_DLFCN_H.c.o -o cmTC_cea6e 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files GL/glu.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_e55bf/fast && /usr/bin/make  -f CMakeFiles/cmTC_e55bf.dir/build.make CMakeFiles/cmTC_e55bf.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_e55bf.dir/HAVE_GL_GLU_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_e55bf.dir/HAVE_GL_GLU_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_GL_GLU_H.c
+Linking C executable cmTC_e55bf
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e55bf.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_e55bf.dir/HAVE_GL_GLU_H.c.o -o cmTC_e55bf 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files locale.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_71914/fast && /usr/bin/make  -f CMakeFiles/cmTC_71914.dir/build.make CMakeFiles/cmTC_71914.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_71914.dir/HAVE_LOCALE_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_71914.dir/HAVE_LOCALE_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_LOCALE_H.c
+Linking C executable cmTC_71914
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_71914.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_71914.dir/HAVE_LOCALE_H.c.o -o cmTC_71914 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files png.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_cd466/fast && /usr/bin/make  -f CMakeFiles/cmTC_cd466.dir/build.make CMakeFiles/cmTC_cd466.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_cd466.dir/HAVE_PNG_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_cd466.dir/HAVE_PNG_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_PNG_H.c
+Linking C executable cmTC_cd466
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cd466.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_cd466.dir/HAVE_PNG_H.c.o -o cmTC_cd466 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files stdio.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_f7c46/fast && /usr/bin/make  -f CMakeFiles/cmTC_f7c46.dir/build.make CMakeFiles/cmTC_f7c46.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_f7c46.dir/HAVE_STDIO_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_f7c46.dir/HAVE_STDIO_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_STDIO_H.c
+Linking C executable cmTC_f7c46
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f7c46.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_f7c46.dir/HAVE_STDIO_H.c.o -o cmTC_f7c46 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files strings.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_57aab/fast && /usr/bin/make  -f CMakeFiles/cmTC_57aab.dir/build.make CMakeFiles/cmTC_57aab.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_57aab.dir/HAVE_STRINGS_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_57aab.dir/HAVE_STRINGS_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_STRINGS_H.c
+Linking C executable cmTC_57aab
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_57aab.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_57aab.dir/HAVE_STRINGS_H.c.o -o cmTC_57aab 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files sys/select.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_19a72/fast && /usr/bin/make  -f CMakeFiles/cmTC_19a72.dir/build.make CMakeFiles/cmTC_19a72.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_19a72.dir/HAVE_SYS_SELECT_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_19a72.dir/HAVE_SYS_SELECT_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_SYS_SELECT_H.c
+Linking C executable cmTC_19a72
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_19a72.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_19a72.dir/HAVE_SYS_SELECT_H.c.o -o cmTC_19a72 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files X11/Xlib.h;X11/Xregion.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_98ad2/fast && /usr/bin/make  -f CMakeFiles/cmTC_98ad2.dir/build.make CMakeFiles/cmTC_98ad2.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_98ad2.dir/HAVE_X11_XREGION_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_98ad2.dir/HAVE_X11_XREGION_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_X11_XREGION_H.c
+Linking C executable cmTC_98ad2
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_98ad2.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_98ad2.dir/HAVE_X11_XREGION_H.c.o -o cmTC_98ad2 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files X11/Xlib.h;X11/extensions/Xdbe.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_5d06d/fast && /usr/bin/make  -f CMakeFiles/cmTC_5d06d.dir/build.make CMakeFiles/cmTC_5d06d.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_5d06d.dir/HAVE_XDBE_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_5d06d.dir/HAVE_XDBE_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_XDBE_H.c
+Linking C executable cmTC_5d06d
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5d06d.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_5d06d.dir/HAVE_XDBE_H.c.o -o cmTC_5d06d 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files pthread.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_f0311/fast && /usr/bin/make  -f CMakeFiles/cmTC_f0311.dir/build.make CMakeFiles/cmTC_f0311.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_f0311.dir/HAVE_PTHREAD_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_f0311.dir/HAVE_PTHREAD_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_PTHREAD_H.c
+Linking C executable cmTC_f0311
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f0311.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_f0311.dir/HAVE_PTHREAD_H.c.o -o cmTC_f0311 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if files dirent.h exist passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_22e09/fast && /usr/bin/make  -f CMakeFiles/cmTC_22e09.dir/build.make CMakeFiles/cmTC_22e09.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_22e09.dir/HAVE_DIRENT_H.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_22e09.dir/HAVE_DIRENT_H.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CheckIncludeFiles/HAVE_DIRENT_H.c
+Linking C executable cmTC_22e09
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_22e09.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_22e09.dir/HAVE_DIRENT_H.c.o -o cmTC_22e09 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function dlsym exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_a392b/fast && /usr/bin/make  -f CMakeFiles/cmTC_a392b.dir/build.make CMakeFiles/cmTC_a392b.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_a392b.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=dlsym -o CMakeFiles/cmTC_a392b.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_a392b
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a392b.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=dlsym -rdynamic CMakeFiles/cmTC_a392b.dir/CheckFunctionExists.c.o -o cmTC_a392b  -ldl 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function localeconv exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_a9bb0/fast && /usr/bin/make  -f CMakeFiles/cmTC_a9bb0.dir/build.make CMakeFiles/cmTC_a9bb0.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_a9bb0.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=localeconv -o CMakeFiles/cmTC_a9bb0.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_a9bb0
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a9bb0.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=localeconv -rdynamic CMakeFiles/cmTC_a9bb0.dir/CheckFunctionExists.c.o -o cmTC_a9bb0 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function png_get_valid exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_96301/fast && /usr/bin/make  -f CMakeFiles/cmTC_96301.dir/build.make CMakeFiles/cmTC_96301.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_96301.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=png_get_valid -o CMakeFiles/cmTC_96301.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_96301
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_96301.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=png_get_valid -rdynamic CMakeFiles/cmTC_96301.dir/CheckFunctionExists.c.o -o cmTC_96301  /usr/lib/libpng.so 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function png_set_tRNS_to_alpha exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_dbbd1/fast && /usr/bin/make  -f CMakeFiles/cmTC_dbbd1.dir/build.make CMakeFiles/cmTC_dbbd1.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_dbbd1.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=png_set_tRNS_to_alpha -o CMakeFiles/cmTC_dbbd1.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_dbbd1
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dbbd1.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=png_set_tRNS_to_alpha -rdynamic CMakeFiles/cmTC_dbbd1.dir/CheckFunctionExists.c.o -o cmTC_dbbd1  /usr/lib/libpng.so 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function scandir exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c4cee/fast && /usr/bin/make  -f CMakeFiles/cmTC_c4cee.dir/build.make CMakeFiles/cmTC_c4cee.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_c4cee.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=scandir -o CMakeFiles/cmTC_c4cee.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_c4cee
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c4cee.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=scandir -rdynamic CMakeFiles/cmTC_c4cee.dir/CheckFunctionExists.c.o -o cmTC_c4cee 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function snprintf exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_03192/fast && /usr/bin/make  -f CMakeFiles/cmTC_03192.dir/build.make CMakeFiles/cmTC_03192.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_03192.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=snprintf -o CMakeFiles/cmTC_03192.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+<Kommandozeile>: Warnung: in Konflikt stehende Typen für eingebaute Funktion »snprintf«; erwartet wurde »int(char *, long unsigned int,  const char *, ...)« [-Wbuiltin-declaration-mismatch]
+/usr/share/cmake-3.19/Modules/CheckFunctionExists.c:7:3: Anmerkung: bei Substitution des Makros »CHECK_FUNCTION_EXISTS«
+    7 |   CHECK_FUNCTION_EXISTS(void);
+      |   ^~~~~~~~~~~~~~~~~~~~~
+/usr/share/cmake-3.19/Modules/CheckFunctionExists.c:1:1: Anmerkung: »snprintf« wird in Header »<stdio.h>« deklariert
+  +++ |+#include <stdio.h>
+    1 | #ifdef CHECK_FUNCTION_EXISTS
+Linking C executable cmTC_03192
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_03192.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=snprintf -rdynamic CMakeFiles/cmTC_03192.dir/CheckFunctionExists.c.o -o cmTC_03192 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function strcasecmp exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c5637/fast && /usr/bin/make  -f CMakeFiles/cmTC_c5637.dir/build.make CMakeFiles/cmTC_c5637.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_c5637.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=strcasecmp -o CMakeFiles/cmTC_c5637.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+<Kommandozeile>: Warnung: in Konflikt stehende Typen für eingebaute Funktion »strcasecmp«; erwartet wurde »int(const char *, const char *)« [-Wbuiltin-declaration-mismatch]
+<Kommandozeile>: Anmerkung: in Definition des Makros »CHECK_FUNCTION_EXISTS«
+Linking C executable cmTC_c5637
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c5637.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=strcasecmp -rdynamic CMakeFiles/cmTC_c5637.dir/CheckFunctionExists.c.o -o cmTC_c5637 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function vsnprintf exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_615ce/fast && /usr/bin/make  -f CMakeFiles/cmTC_615ce.dir/build.make CMakeFiles/cmTC_615ce.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_615ce.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=vsnprintf -o CMakeFiles/cmTC_615ce.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+<Kommandozeile>: Warnung: in Konflikt stehende Typen für eingebaute Funktion »vsnprintf«; erwartet wurde »int(char *, long unsigned int,  const char *, __va_list_tag *)« [-Wbuiltin-declaration-mismatch]
+/usr/share/cmake-3.19/Modules/CheckFunctionExists.c:7:3: Anmerkung: bei Substitution des Makros »CHECK_FUNCTION_EXISTS«
+    7 |   CHECK_FUNCTION_EXISTS(void);
+      |   ^~~~~~~~~~~~~~~~~~~~~
+/usr/share/cmake-3.19/Modules/CheckFunctionExists.c:1:1: Anmerkung: »vsnprintf« wird in Header »<stdio.h>« deklariert
+  +++ |+#include <stdio.h>
+    1 | #ifdef CHECK_FUNCTION_EXISTS
+Linking C executable cmTC_615ce
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_615ce.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=vsnprintf -rdynamic CMakeFiles/cmTC_615ce.dir/CheckFunctionExists.c.o -o cmTC_615ce 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function XOpenDisplay exists in the /usr/lib/libX11.so;/usr/lib/libXext.so passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_fa89e/fast && /usr/bin/make  -f CMakeFiles/cmTC_fa89e.dir/build.make CMakeFiles/cmTC_fa89e.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_fa89e.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=XOpenDisplay -o CMakeFiles/cmTC_fa89e.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_fa89e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fa89e.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=XOpenDisplay -rdynamic CMakeFiles/cmTC_fa89e.dir/CheckFunctionExists.c.o -o cmTC_fa89e  /usr/lib/libX11.so /usr/lib/libXext.so 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function gethostbyname exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_980af/fast && /usr/bin/make  -f CMakeFiles/cmTC_980af.dir/build.make CMakeFiles/cmTC_980af.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_980af.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=gethostbyname -o CMakeFiles/cmTC_980af.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_980af
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_980af.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=gethostbyname -rdynamic CMakeFiles/cmTC_980af.dir/CheckFunctionExists.c.o -o cmTC_980af 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function connect exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_e95af/fast && /usr/bin/make  -f CMakeFiles/cmTC_e95af.dir/build.make CMakeFiles/cmTC_e95af.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_e95af.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=connect -o CMakeFiles/cmTC_e95af.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_e95af
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e95af.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=connect -rdynamic CMakeFiles/cmTC_e95af.dir/CheckFunctionExists.c.o -o cmTC_e95af 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function remove exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_5c5c1/fast && /usr/bin/make  -f CMakeFiles/cmTC_5c5c1.dir/build.make CMakeFiles/cmTC_5c5c1.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_5c5c1.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=remove -o CMakeFiles/cmTC_5c5c1.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_5c5c1
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5c5c1.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=remove -rdynamic CMakeFiles/cmTC_5c5c1.dir/CheckFunctionExists.c.o -o cmTC_5c5c1 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function shmat exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_92ead/fast && /usr/bin/make  -f CMakeFiles/cmTC_92ead.dir/build.make CMakeFiles/cmTC_92ead.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_92ead.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=shmat -o CMakeFiles/cmTC_92ead.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_92ead
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_92ead.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=shmat -rdynamic CMakeFiles/cmTC_92ead.dir/CheckFunctionExists.c.o -o cmTC_92ead 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function IceConnectionNumber exists in the ICE passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_20874/fast && /usr/bin/make  -f CMakeFiles/cmTC_20874.dir/build.make CMakeFiles/cmTC_20874.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_20874.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=IceConnectionNumber -o CMakeFiles/cmTC_20874.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_20874
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_20874.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=IceConnectionNumber -rdynamic CMakeFiles/cmTC_20874.dir/CheckFunctionExists.c.o -o cmTC_20874  -lICE 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_dd916/fast && /usr/bin/make  -f CMakeFiles/cmTC_dd916.dir/build.make CMakeFiles/cmTC_dd916.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_dd916.dir/CheckIncludeFile.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64  -o CMakeFiles/cmTC_dd916.dir/CheckIncludeFile.c.o -c /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_dd916
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dd916.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64  -rdynamic CMakeFiles/cmTC_dd916.dir/CheckIncludeFile.c.o -o cmTC_dd916 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
+Determining if the function pthread_create exists in the pthread passed with the following output:
+Change Dir: /home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_b46de/fast && /usr/bin/make  -f CMakeFiles/cmTC_b46de.dir/build.make CMakeFiles/cmTC_b46de.dir/build
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird betreten
+Building C object CMakeFiles/cmTC_b46de.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=pthread_create -o CMakeFiles/cmTC_b46de.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.19/Modules/CheckFunctionExists.c
+Linking C executable cmTC_b46de
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b46de.dir/link.txt --verbose=1
+/usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -DCHECK_FUNCTION_EXISTS=pthread_create -rdynamic CMakeFiles/cmTC_b46de.dir/CheckFunctionExists.c.o -o cmTC_b46de  -lpthread 
+make[1]: Verzeichnis „/home/geri/freecut/target/release/build/fltk-sys-d21151c14aea088a/out/build/CMakeFiles/CMakeTmp“ wird verlassen
+
+
+
