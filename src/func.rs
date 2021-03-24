@@ -201,7 +201,6 @@ pub fn read_user_input(
                     pattern_direction,
                 };
                 result_cut.push(cutpiece);
-                dbg!("{}", &result_cut);
             }
         }
     }
