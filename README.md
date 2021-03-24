@@ -1,7 +1,7 @@
 # freecut
 
 freecut is a free and open source cut optimizer software for optimizing rectangular cut pieces from panels.
-It is easy to use and after you have made the entries in the Gui, a pdf file is created with the result.
+It is easy to use and after you have made the entries in the gui, a pdf file is created with the result.
 
 This software is written in Rust using the Rust bindings for the FLTK Graphical User Interface library [fltk-rs](https://crates.io/crates/fltk), 
 [comfy-table](https://crates.io/crates/comfy-table), [pdf-canvas](https://crates.io/crates/pdf-canvas) and the genetic algorithms and heuristics from the
