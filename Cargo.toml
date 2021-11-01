@@ -1,6 +1,6 @@
 [package]
 name = "freecut"
-version = "0.1.9.1"
+version = "0.1.10"
 authors = ["Gerhard Schwanzer <geri@sdf.org>"]
 edition = "2018"
 license = "Apache-2.0"
