@@ -50,7 +50,7 @@ pub fn create_solution_pdf(name: &str, solution: Solution) {
                 for cutp in stp.cut_pieces {
                     text_output.push(format!(
                         "Id{}: {} x {}mm",
-                        cutp.external_id, cutp.width, cutp.length
+                        cutp.external_id.unwrap(), cutp.width, cutp.length
                     ));
                     canvas.set_stroke_color(Color::rgb(0, 248, 0))?;
                     canvas.rectangle(
@@ -77,7 +77,7 @@ pub fn create_solution_pdf(name: &str, solution: Solution) {
                             + ((cutp.length as f32 * pt / f) / 24_f32),
                         font,
                         8.0,
-                        &cutp.external_id.to_string(),
+                        &cutp.external_id.unwrap().to_string(),
                     )?;
                     canvas.fill()?;
                 }
@@ -194,7 +194,7 @@ pub fn read_user_input(
             let amount = piece[4].parse::<usize>().unwrap();
             for _ in 0..amount {
                 let cutpiece: CutPiece = CutPiece {
-                    external_id: generate_uid(used_id),
+                    external_id: Some(generate_uid(used_id)),
                     width,
                     length,
                     can_rotate: true,
