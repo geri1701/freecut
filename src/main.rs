@@ -2,6 +2,7 @@
 use crate::co::Optimizer;
 use crate::co::{CutPiece, Solution, StockPiece};
 use comfy_table::Table;
+use fltk::prelude::{BrowserExt, DisplayExt, GroupExt, InputExt, WidgetBase, WidgetExt};
 use fltk::{app::*, browser::*, button::*, group::*, input::*, misc::*, text::*, window::*};
 use rand::prelude::*;
 mod func;
@@ -137,7 +138,7 @@ fn main() {
         if output_altered {
             output.clear();
             for (idx, line) in output_string.lines().enumerate() {
-                output.insert(idx as u32 + 1, line);
+                output.insert(idx as i32 + 1, line);
             }
             output_altered = false;
         }

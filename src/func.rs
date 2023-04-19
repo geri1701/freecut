@@ -50,7 +50,9 @@ pub fn create_solution_pdf(name: &str, solution: Solution) {
                 for cutp in stp.cut_pieces {
                     text_output.push(format!(
                         "Id{}: {} x {}mm",
-                        cutp.external_id.unwrap(), cutp.width, cutp.length
+                        cutp.external_id.unwrap(),
+                        cutp.width,
+                        cutp.length
                     ));
                     canvas.set_stroke_color(Color::rgb(0, 248, 0))?;
                     canvas.rectangle(
@@ -173,12 +175,16 @@ pub fn read_user_input(
                 "length" => ParallelToLength,
                 _ => None,
             };
+            let price = 0;
+            let quantity = Some(1);
             let amount = piece[4].parse::<usize>().unwrap();
             for _ in 0..amount {
                 let stockpiece: StockPiece = StockPiece {
                     width,
                     length,
                     pattern_direction,
+                    price,
+                    quantity,
                 };
                 result_stock.push(stockpiece);
             }
@@ -191,6 +197,7 @@ pub fn read_user_input(
                 "length" => ParallelToLength,
                 _ => None,
             };
+            let quantity = 1;
             let amount = piece[4].parse::<usize>().unwrap();
             for _ in 0..amount {
                 let cutpiece: CutPiece = CutPiece {
@@ -199,6 +206,7 @@ pub fn read_user_input(
                     length,
                     can_rotate: true,
                     pattern_direction,
+                    quantity,
                 };
                 result_cut.push(cutpiece);
             }
