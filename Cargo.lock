@@ -98,12 +98,13 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "cut-optimizer-2d"
-version = "0.1.5"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ed5b959eb2a86f1ae7275d7d9488bf58972ceb217973c9be569c0fab3664acc"
+checksum = "4b7c91abf8192921255742a75fdd5c99d2f4c73768f8154e236608e59f0d9775"
 dependencies = [
  "fnv",
  "rand",
+ "smallvec",
 ]
 
 [[package]]
@@ -137,7 +138,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "freecut"
-version = "0.1.10"
+version = "0.1.1"
 dependencies = [
  "comfy-table",
  "cut-optimizer-2d",
@@ -384,9 +385,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.7.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "strum"
