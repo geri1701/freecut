@@ -13,7 +13,11 @@ cut-optimizer-2d = "0.4.2"
 pdf-canvas = "0.7.0"
 rand = "0.8.3"
 comfy-table = "2.1.0"
+<<<<<<< HEAD
 fltk = "^1.4"
+=======
+fltk =  "^1.4"
+>>>>>>> 177e1a7 (Remove workflow)
 
 [dev-dependencies]
 time = "0.2.23"
