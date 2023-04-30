@@ -10,15 +10,8 @@
       let
         pkgs = import nixpkgs { inherit system; };
         naersk-lib = pkgs.callPackage naersk { };
-      in
-      {
+      in {
         defaultPackage = naersk-lib.buildPackage ./.;
-<<<<<<< HEAD
-        devShell = with pkgs; mkShell {
-          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy ];
-          RUST_SRC_PATH = rustPlatform.rustLibSrc;
-        };
-=======
         devShell = with pkgs;
           mkShell {
             buildInputs = [
@@ -35,14 +28,9 @@
               xorg.libXfixes
               xorg.libXft
               pango
-              curl
-              openssl
-              openssl.dev
-              pkg-config
             ];
             nativeBuildInputs = with pkgs; [ pkg-config openssl.dev curl ];
             RUST_SRC_PATH = rustPlatform.rustLibSrc;
           };
->>>>>>> 177e1a7 (Remove workflow)
       });
 }
