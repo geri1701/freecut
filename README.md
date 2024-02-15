@@ -15,7 +15,7 @@ This software is written in Rust using the Rust bindings for the FLTK Graphical 
 
 ### Linux and other
 
-First install cargo.
+First install `cargo` and `cmake`, which is a dependency of fltk-sys.
 
 Now, compile the freecut-crate:
 
