@@ -241,3 +241,8 @@ pub fn cutpiece_exists(choice_val: Option<String>, pieces_vec: Vec<Vec<String>>)
     }
     exists
 }
+
+pub fn unit_convert(number: f32) -> f32 {
+    todo!()
+}
+
