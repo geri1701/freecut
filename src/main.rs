@@ -47,8 +47,8 @@ fn main() -> Result<(), FltkError> {
             ..set_callback(move |wizard| wizard.child(0).unwrap().do_callback());
             ..add(&page_optimizer());
             ..add(&page_settings());
-            ..add(&page_doc("Manual", "../README.md"));
-            ..add(&page_doc("License", "../LICENCE"));
+            ..add(&page_doc("Manual", include_str!("../README.md")));
+            ..add(&page_doc("License", include_str!("../LICENSE")));
             ..end();
             ..handle(add_menu);
         ));
@@ -372,14 +372,14 @@ fn page_settings() -> Flex {
     )
 }
 
-fn page_doc(title: &str, file: &str) -> Flex {
+fn page_doc(title: &str, body: &str) -> Flex {
     cascade!(
         Flex::default_fill().with_label(title);
         ..set_margin(PAD);
         ..add(&cascade!(
             TextDisplay::default();
             ..set_buffer(TextBuffer::default());
-            ..insert(include_str!(file));
+            ..insert(body);
         ));
         ..end();
     )
