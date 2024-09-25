@@ -1,9 +1,9 @@
 use {
-    cut_optimizer_2d::{CutPiece, PatternDirection, Optimizer, Solution, StockPiece},
+    cascade::cascade,
+    cut_optimizer_2d::{CutPiece, Optimizer, PatternDirection, Solution, StockPiece},
     pdf_canvas::{graphicsstate::Color, BuiltinFont, Pdf},
     serde::{Deserialize, Serialize},
     std::{env, fs},
-    cascade::cascade,
     uom::si::{
         f32::Length,
         length::{foot, inch, millimeter},
@@ -208,7 +208,7 @@ impl Piece {
 pub struct Model {
     unit: i32,
     layout: i32,
-    width:  f32,
+    width: f32,
     pieces: Vec<Piece>,
 }
 
@@ -227,10 +227,16 @@ impl Model {
         }
     }
     pub fn allowed_range(&self, value: &f32) -> bool {
+        const MIN: f32 = 1f32;
+        const MAX: f32 = 100000f32;
         match self.unit {
-            1 => (Length::new::<millimeter>(1f32).get::<inch>()..=Length::new::<millimeter>(100000f32).get::<inch>()).contains(value),
-            2 => (Length::new::<millimeter>(1f32).get::<foot>()..=Length::new::<millimeter>(100000f32).get::<inch>()).contains(value),
-            _ => (1f32..=100000f32).contains(value),
+            1 => (Length::new::<millimeter>(MIN).get::<inch>()
+                ..=Length::new::<millimeter>(MAX).get::<inch>())
+                .contains(value),
+            2 => (Length::new::<millimeter>(MIN).get::<foot>()
+                ..=Length::new::<millimeter>(MAX).get::<foot>())
+                .contains(value),
+            _ => (MIN..=100000f32).contains(value),
         }
     }
     pub fn save(&self) {
@@ -336,7 +342,7 @@ impl Model {
         }
         (stock_pieces, cut_pieces)
     }
-    pub fn optimize(&mut self) {
+    pub fn optimize(&mut self) -> String {
         let (stock_pieces, cut_pieces) = self.unzip();
         let random_seed = rand::random::<u64>();
         let optimizer = cascade!(
@@ -351,8 +357,9 @@ impl Model {
             _ => optimizer.optimize_nested(|_| ()),
         } {
             create_solution_pdf(random_seed, solution);
-            //self.output = format!("Outputfile solution_{random_seed}.pdf saved to disk!");
+            return format!("Outputfile solution_{random_seed}.pdf saved to disk!");
         }
+        "No solution, invalid input!\nIf a pattern is selected for a stockpiece,\nyou have to choose a possible pattern for all of the cutpieces!".to_string()
     }
 }
 

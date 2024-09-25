@@ -4,17 +4,18 @@ use {
     comfy_table::{modifiers, presets, Table},
     fltk::{
         app,
-        draw,
+        app::prefs::{Preferences, Root},
         button::Button,
-        dialog::alert_default,
-        enums::{Color, Event, CallbackTrigger, Font, Cursor},
+        dialog::{alert_default, message_default},
+        draw,
+        enums::{CallbackTrigger, Color, Cursor, Event, Font},
         frame::Frame,
-        menu::{Choice, MenuButton, MenuButtonType},
         group::{Flex, FlexType, Wizard},
         image::SvgImage,
         input::{Input, InputType},
+        menu::{Choice, MenuButton, MenuButtonType},
         prelude::*,
-        text::{TextBuffer, TextDisplay, WrapMode},
+        text::{TextBuffer, TextDisplay},
         window::Window,
     },
     std::{cell::RefCell, rc::Rc},
@@ -81,33 +82,33 @@ fn page_optimizer() -> Flex {
         Flex::default_fill().with_label("Optimizer").column();
         ..set_margin(PAD);
         ..set_pad(0);
-        ..set_callback(glib::clone!(@strong state => move |_| state.borrow().save()));
+        ..set_callback(glib::clone!(#[strong] state, move |_| state.borrow().save()));
         ..add(&cascade!(
             Flex::default_fill();
             ..set_margin(0);
             ..set_pad(PAD);
-            ..set_size(&Frame::default(), WIDTH * 2);
+            ..fixed(&Frame::default(), WIDTH * 2);
             ..add(&cascade!(
                 Flex::default_fill().column();
                 ..set_margin(0);
                 ..set_pad(PAD);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Button::default().with_label("@#refresh");
                     ..set_label_color(Color::Red);
                     ..set_tooltip("CLEAN");
-                    ..set_callback(glib::clone!(@strong state => move |_| {
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
                         state.borrow_mut().clean();
                         app::handle_main(UPDATE).unwrap();
                     }));
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Choice::default().with_label("piece type");
                     ..add_choice(&KINDS.join("|"));
-                    ..set_callback(glib::clone!(@strong state => move |choice| {
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
                         state.borrow_mut().piece_kind(choice.value());
                         app::handle_main(UPDATE).unwrap();
                     }));
-                    ..handle(glib::clone!(@strong state => move |choice, event| {
+                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
                         if event == UPDATE {
                             choice.set_value(state.borrow().piece().kind());
                         }
@@ -115,10 +116,10 @@ fn page_optimizer() -> Flex {
                     }));
                     ..handle_event(UPDATE);
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Input::default().with_label("width:").with_type(InputType::Float);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(@strong state => move |input| {
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
                         if let Ok(value) = input.value().parse::<f32>() {
                             if state.borrow().allowed_range(&value) {
                                 state.borrow_mut().piece_width(value);
@@ -130,7 +131,7 @@ fn page_optimizer() -> Flex {
                         }
                         app::handle_main(UPDATE).unwrap();
                     }));
-                    ..handle(glib::clone!(@strong state => move |input, event| {
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
                         if event == UPDATE {
                             input.set_value(&state.borrow().piece().width());
                         }
@@ -138,10 +139,10 @@ fn page_optimizer() -> Flex {
                     }));
                     ..handle_event(UPDATE);
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Input::default().with_label("length:").with_type(InputType::Float);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(@strong state => move |input| {
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
                         if let Ok(value) = input.value().parse::<f32>() {
                             if state.borrow().allowed_range(&value) {
                                 state.borrow_mut().piece_length(value);
@@ -153,7 +154,7 @@ fn page_optimizer() -> Flex {
                         }
                         app::handle_main(UPDATE).unwrap();
                     }));
-                    ..handle(glib::clone!(@strong state => move |input, event| {
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
                         if event == UPDATE {
                             input.set_value(&state.borrow().piece().length());
                         }
@@ -161,10 +162,10 @@ fn page_optimizer() -> Flex {
                     }));
                     ..handle_event(UPDATE);
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Input::default().with_label("amount:").with_type(InputType::Int);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(@strong state => move |input| {
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
                         if let Ok(value) = input.value().parse::<f32>() {
                             if state.borrow().allowed_range(&value) {
                                 state.borrow_mut().piece_amount(value as usize);
@@ -176,7 +177,7 @@ fn page_optimizer() -> Flex {
                         }
                         app::handle_main(UPDATE).unwrap();
                     }));
-                    ..handle(glib::clone!(@strong state => move |input, event| {
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
                         if event == UPDATE {
                             input.set_value(&state.borrow().piece().amount());
                         }
@@ -184,14 +185,14 @@ fn page_optimizer() -> Flex {
                     }));
                     ..handle_event(UPDATE);
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Choice::default().with_label("pattern (parallel to):");
                     ..add_choice(&PATTERNS.join("|"));
-                    ..set_callback(glib::clone!(@strong state => move |choice| {
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
                         state.borrow_mut().piece_pattern(choice.value());
                         app::handle_main(UPDATE).unwrap();
                     }));
-                    ..handle(glib::clone!(@strong state => move |choice, event| {
+                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
                         if event == UPDATE {
                             choice.set_value(state.borrow().piece().pattern());
                         }
@@ -199,29 +200,29 @@ fn page_optimizer() -> Flex {
                     }));
                     ..handle_event(UPDATE);
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Button::default().with_label("@#+");
                     ..set_label_color(Color::Green);
                     ..set_tooltip("ADD PIECE");
-                    ..set_callback(glib::clone!(@strong state => move |_| {
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
                         state.borrow_mut().add();
                         app::handle_main(UPDATE).unwrap();
                     }));
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Choice::default().with_label("unit");
                     ..add_choice(&UNITS.join("|"));
                     ..set_value(state.borrow().unit());
-                    ..set_callback(glib::clone!(@strong state => move |choice| {
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
                         state.borrow_mut().set_unit(choice.value());
                         app::handle_main(UPDATE).unwrap();
                     }));
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Input::default().with_label("cut_width:").with_type(InputType::Float);
                     ..set_value(&state.borrow().width());
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(@strong state => move |input| {
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
                         if let Ok(value) = input.value().parse::<f32>() {
                             if (0.0..15.0).contains(&value) {
                                 state.borrow_mut().set_width(value);
@@ -234,21 +235,21 @@ fn page_optimizer() -> Flex {
                         app::handle_main(UPDATE).unwrap();
                     }));
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Choice::default().with_label("layout:");
                     ..add_choice("guillotine|nested");
                     ..set_value(state.borrow().layout());
-                    ..set_callback(glib::clone!(@strong state => move |choice| {
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
                         state.borrow_mut().set_layout(choice.value());
                     }));
                 ), HEIGHT);
-                ..set_size(&cascade!(
+                ..fixed(&cascade!(
                     Button::default().with_label("@#circle");
                     ..set_tooltip("OPTIMIZE");
-                    ..set_callback(glib::clone!(@strong state => move |_| {
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
                         let list: Vec<i32> = state.borrow().pieces().iter().map(|x| x.kind()).collect();
                         if list.len() > 1 && list.contains(&0) && list.contains(&1) {
-                            state.borrow_mut().optimize();
+                            message_default(&state.borrow_mut().optimize());
                         } else {
                             alert_default(ERROR_PIECE);
                         }
@@ -264,7 +265,7 @@ fn page_optimizer() -> Flex {
             TextDisplay::default();
             ..set_tooltip("Output");
             ..set_buffer(TextBuffer::default());
-            ..handle(glib::clone!(@strong state => move |display, event| {
+            ..handle(glib::clone!(#[strong] state, move |display, event| {
                 if event == UPDATE {
                     display.buffer().unwrap().set_text({
                         let state = state.borrow();
@@ -296,28 +297,31 @@ fn page_optimizer() -> Flex {
 }
 
 fn page_settings() -> Flex {
+    let mut prefs = Preferences::new(Root::USER_L, "fltk.org", "FLTK").unwrap();
+    let mut set = Preferences::new_group(&mut prefs, "Settings").unwrap();
     cascade!(
-        Flex::default_fill().with_label("Settings");
+        Flex::default_fill().with_label(&set.name().unwrap());
         ..set_margin(PAD);
         ..set_pad(PAD);
         ..add(&Frame::default());
-        ..set_size(&cascade!(
+        ..fixed(&cascade!(
             Flex::default_fill().column();
             ..set_pad(PAD);
             ..set_margin(PAD);
             ..add(&Frame::default());
             ..add(&cascade!(
                 Flex::default_fill();
-                ..set_size(&Frame::default(), WIDTH);
+                ..fixed(&Frame::default(), WIDTH);
                 ..add(&cascade!(
                     Flex::default_fill().column();
                     ..set_color(Color::Foreground);
                     ..set_pad(PAD);
-                    ..set_size(&cascade!(
+                    ..fixed(&cascade!(
                         Choice::default().with_label("Theme");
                         ..add_choice("Light|Dark");
-                        ..set_value(0);
+                        ..set_value(set.get_int("theme").unwrap_or(0));
                         ..set_callback(move |choice| {
+                            set.set_int("theme", choice.value()).unwrap();
                             let color = [
                                 [ //LIGHT
                                     0xeee8d5, //base2
@@ -392,9 +396,8 @@ fn add_orientation(flex: &mut Flex, event: Event) -> bool {
                 true => FlexType::Column,
                 false => FlexType::Row,
             });
-            flex.set_size(&flex.child(0).unwrap(), 11 * HEIGHT + 10 * PAD);
-            flex.set_size(&flex.child(1).unwrap(), PAD);
-            //flex.set_size(&flex.child(2).unwrap(), 0);
+            flex.fixed(&flex.child(0).unwrap(), 11 * HEIGHT + 10 * PAD);
+            flex.fixed(&flex.child(1).unwrap(), PAD);
         }
         return true;
     }
