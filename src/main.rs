@@ -1,719 +1,449 @@
-#![windows_subsystem = "windows"]
-use crate::co::Optimizer;
-use crate::co::{CutPiece, Solution, StockPiece};
-use comfy_table::Table;
-use fltk::prelude::{BrowserExt, DisplayExt, GroupExt, InputExt, WidgetBase, WidgetExt};
-use fltk::{app::*, browser::*, button::*, group::*, input::*, misc::*, text::*, window::*};
-use rand::prelude::*;
-mod func;
-use cut_optimizer_2d as co;
-use func::{create_solution_pdf, cutpiece_exists, read_user_input, stockpiece_exists};
-fn main() {
-    let mut used_id: Vec<usize> = Vec::new();
-    let mut optimizer = Optimizer::new();
-    let app = App::default().with_scheme(AppScheme::Gleam);
-    let mut wind = Window::new(0, 0, 600, 380, "freecut");
-    fltk::app::set_font(fltk::enums::Font::Courier);
-    let mut tabs = Tabs::new(0, 0, 600, 380, "");
-    tabs.end();
-    let mut opt_tab = Group::new(0, 27, 580, 340, "Optimizer");
-    opt_tab.end();
-    opt_tab.show();
-    tabs.add(&opt_tab);
-    let mut man_tab = Group::new(0, 27, 580, 340, "Manual");
-    man_tab.end();
-    man_tab.hide();
-    tabs.add(&man_tab);
-    let mut manual_display = TextDisplay::new(5, 27, 580, 340, "");
-    man_tab.add(&manual_display);
-    let manual = include_str!("manual.md").to_owned();
-    let manual_buffer = TextBuffer::default();
-    manual_display.set_buffer(Some(manual_buffer));
-    manual_display.wrap_mode(WrapMode::AtColumn, 55);
-    manual_display.set_scrollbar_size(15);
-    manual_display.insert(&manual);
-    let mut license_tab = Group::new(0, 27, 580, 340, "License");
-    license_tab.end();
-    license_tab.hide();
-    tabs.add(&license_tab);
-    let mut license_display = TextDisplay::new(5, 27, 580, 340, "");
-    license_tab.add(&license_display);
-    let license = include_str!("license.md").to_owned();
-    let license_buffer = TextBuffer::default();
-    license_display.set_buffer(Some(license_buffer));
-    license_display.wrap_mode(WrapMode::AtColumn, 80);
-    license_display.set_scrollbar_size(15);
-    license_display.insert(&license);
-    let input_width = FloatInput::new(200, 45, 65, 25, "width (mm):");
-    opt_tab.add(&input_width);
-    let input_length = FloatInput::new(365, 45, 65, 25, "length (mm):");
-    opt_tab.add(&input_length);
-    let amount = FloatInput::new(495, 45, 65, 24, "amount:");
-    opt_tab.add(&amount);
-    let mut pattern = InputChoice::new(200, 75, 75, 25, "pattern (parallel to):");
-    opt_tab.add(&pattern);
-    pattern.add("none");
-    pattern.add("width");
-    pattern.add("length");
-    let mut piece_choice = InputChoice::new(365, 75, 105, 25, "piece type");
-    opt_tab.add(&piece_choice);
-    piece_choice.add("cutpiece");
-    piece_choice.add("stockpiece");
-    let mut add = Button::new(475, 75, 85, 25, "add piece");
-    opt_tab.add(&add);
-    let mut output = Browser::new(50, 105, 500, 200, "");
-    output.set_label_font(fltk::enums::Font::Courier);
-    output.set_scrollbar_size(15);
-    opt_tab.add(&output);
-    let cut_width = FloatInput::new(230, 315, 65, 25, "cut_width (mm):");
-    opt_tab.add(&cut_width);
-    let mut optimizer_layout = InputChoice::new(365, 315, 95, 25, "layout:");
-    opt_tab.add(&optimizer_layout);
-    optimizer_layout.add("guillotine");
-    optimizer_layout.add("nested");
-    let mut opt = Button::new(475, 315, 85, 25, "optimize");
-    opt_tab.add(&opt);
-    let mut res = Button::new(10, 315, 80, 25, "reset");
-    opt_tab.add(&res);
-    opt_tab.end();
-    wind.end();
-    wind.show();
-    let (sa, ra) = fltk::app::channel();
-    add.emit(sa, "add");
-    res.emit(sa, "reset");
-    opt.emit(sa, "opt");
-    let allowed_pattern = [
-        Some("none".to_string()),
-        Some("width".to_string()),
-        Some("length".to_string()),
-    ];
-    let allowed_range = 1.0..100000.1;
-    let allowed_cutw_range = 0.0..15.0;
-    let mut pieces_vec: Vec<Vec<String>> = Vec::new();
-    let mut table = Table::new();
-    table.set_header(vec!["Type", "width", "length", "pattern", "amount"]);
-    let mut add_button_pressed = false;
-    let mut opt_button_pressed = false;
-    let mut res_button_pressed = false;
-    let mut output_altered = false;
-    let error_output =
-        "Add at least one stockpiece to the draft list!\nAdd at least one cutpiece to the draft list!\n";
-    let err_stockpiece = "Add at least one stockpiece to the draft list!";
-    let err_cutpiece = "Add at least one cutpiece to the draft list!";
-    let err_amount = "Amount is out of range!";
-    let err_width = "Width is out of range!";
-    let err_lenght = "Lenght is out of range!";
-    let err_pattern = "Add none or a direction in pattern field!";
-    let mut output_string = format!("{}\n{}", error_output, table);
-    let mut cutvec: Vec<CutPiece> = Vec::new();
-    let mut stockvec: Vec<StockPiece> = Vec::new();
-    while app.wait() {
-        if let Some(msg) = ra.recv() {
-            match msg {
-                "add" => {
-                    add_button_pressed = true;
-                }
-                "reset" => {
-                    res_button_pressed = true;
-                }
-                "opt" => {
-                    opt_button_pressed = true;
-                }
-                _ => {
-                    add_button_pressed = false;
-                }
-            }
-        };
-        if res_button_pressed {
-            res_button_pressed = false;
-            pieces_vec.clear();
-            optimizer = Optimizer::new();
-            cutvec.clear();
-            stockvec.clear();
-            output_string = "".to_string();
-            let mut table = Table::new();
-            table.set_header(vec!["Type", "width", "length", "pattern", "amount"]);
-            output_altered = true;
-        }
-        if output_altered {
-            output.clear();
-            for (idx, line) in output_string.lines().enumerate() {
-                output.insert(idx as i32 + 1, line);
-            }
-            output_altered = false;
-        }
-        if add_button_pressed {
-            output_altered = true;
-            add_button_pressed = false;
-            if input_width.value().is_empty()
-                || input_length.value().is_empty()
-                || amount.value().is_empty()
-                || piece_choice.value().is_none()
-            {
-                output_string = format!("All fields must have a value!\n{}", table);
-            } else {
-                match (
-                    stockpiece_exists(piece_choice.value(), pieces_vec.clone()),
-                    cutpiece_exists(piece_choice.value(), pieces_vec.clone()),
-                    allowed_range.contains(&input_width.value().parse::<f32>().unwrap()),
-                    allowed_range.contains(&input_length.value().parse::<f32>().unwrap()),
-                    allowed_range.contains(&amount.value().parse::<f32>().unwrap()),
-                    allowed_pattern.contains(&pattern.value()),
-                ) {
-                    (false, false, false, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece,
-                                err_cutpiece,
-                                err_width,
-                                err_lenght,
-                                err_amount,
-                                err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, false, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_lenght, err_amount
-                            ),
-                            table
-                        )
-                    }
-                    (true, false, false, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_cutpiece, err_width, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (true, false, false, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_cutpiece, err_width, err_lenght, err_amount
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, true, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, true, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_lenght, err_amount
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, false, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, false, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_amount
-                            ),
-                            table
-                        )
-                    }
-                    (false, true, false, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_width, err_lenght, err_pattern
-                            ),
-                            table
-                        )
-                    }
+mod models;
+use {
+    cascade::cascade,
+    comfy_table::{modifiers, presets, Table},
+    fltk::{
+        app,
+        app::prefs::{Preferences, Root},
+        button::Button,
+        dialog::{alert_default, message_default},
+        draw,
+        enums::{CallbackTrigger, Color, Cursor, Event, Font},
+        frame::Frame,
+        group::{Flex, FlexType, Wizard},
+        image::SvgImage,
+        input::{Input, InputType},
+        menu::{Choice, MenuButton, MenuButtonType},
+        prelude::*,
+        text::{TextBuffer, TextDisplay},
+        window::Window,
+    },
+    std::{cell::RefCell, rc::Rc},
+};
 
-                    (false, false, false, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_lenght, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, false, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_lenght
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, true, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_lenght, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, true, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_cutpiece, err_lenght),
-                            table
-                        )
-                    }
-                    (true, false, false, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_cutpiece, err_width, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (true, false, false, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_width, err_amount),
-                            table
-                        )
-                    }
-                    (true, false, false, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_cutpiece, err_width, err_lenght, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (true, false, false, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_width, err_lenght),
-                            table
-                        )
-                    }
-                    (false, false, true, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, true, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_cutpiece, err_amount),
-                            table
-                        )
-                    }
-                    (false, false, false, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_cutpiece, err_width, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, false, false, true, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_cutpiece, err_width),
-                            table
-                        )
-                    }
-                    (true, false, true, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_amount, err_pattern),
-                            table
-                        )
-                    }
-                    (true, false, true, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_cutpiece, err_amount),
-                            table
-                        )
-                    }
-                    (true, false, true, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_lenght, err_pattern),
-                            table
-                        )
-                    }
-                    (true, false, true, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_cutpiece, err_lenght),
-                            table
-                        )
-                    }
-                    (true, false, false, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_width, err_pattern),
-                            table
-                        )
-                    }
-                    (true, false, false, true, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_cutpiece, err_width),
-                            table
-                        )
-                    }
-                    (false, true, false, true, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_stockpiece, err_width),
-                            table
-                        )
-                    }
-                    (false, false, true, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_cutpiece, err_pattern),
-                            table
-                        )
-                    }
-                    (false, false, true, true, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_stockpiece, err_cutpiece),
-                            table
-                        )
-                    }
-                    (true, false, true, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_cutpiece, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (true, false, true, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_cutpiece, err_lenght, err_amount),
-                            table
-                        )
-                    }
-                    (true, false, true, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_cutpiece, err_pattern),
-                            table
-                        )
-                    }
-                    (true, false, true, true, true, true) => {
-                        output_string = format!("{}\n{}", format!("{}\n", err_cutpiece), table)
-                    }
-                    (false, true, true, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_stockpiece, err_pattern),
-                            table
-                        )
-                    }
-                    (false, true, true, true, true, true) => {
-                        output_string = format!("{}\n{}", format!("{}\n", err_stockpiece), table)
-                    }
-                    (false, true, false, true, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_width, err_pattern),
-                            table
-                        )
-                    }
-                    (false, true, false, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}", err_stockpiece, err_width, err_lenght),
-                            table
-                        )
-                    }
-                    (false, true, false, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_width, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, true, false, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_width, err_lenght, err_amount
-                            ),
-                            table
-                        )
-                    }
-                    (false, true, false, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_width, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, true, false, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_width, err_amount),
-                            table
-                        )
-                    }
-                    (false, true, true, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_lenght, err_pattern),
-                            table
-                        )
-                    }
-                    (false, true, true, false, true, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_stockpiece, err_lenght),
-                            table
-                        )
-                    }
-                    (false, true, true, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_stockpiece, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (false, true, true, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_lenght, err_amount),
-                            table
-                        )
-                    }
-                    (false, true, true, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_stockpiece, err_amount, err_pattern),
-                            table
-                        )
-                    }
-                    (false, true, true, true, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_stockpiece, err_amount),
-                            table
-                        )
-                    }
-                    (true, true, false, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_width, err_lenght, err_pattern),
-                            table
-                        )
-                    }
-                    (true, true, false, false, true, true) => {
-                        output_string =
-                            format!("{}\n{}", format!("{}\n{}\n", err_width, err_lenght), table)
-                    }
-                    (true, true, true, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_lenght, err_amount, err_pattern),
-                            table
-                        )
-                    }
-                    (true, true, true, false, false, true) => {
-                        output_string =
-                            format!("{}\n{}", format!("{}\n{}\n", err_lenght, err_amount), table)
-                    }
-                    (true, true, true, false, true, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_lenght, err_pattern),
-                            table
-                        )
-                    }
-                    (true, true, true, false, true, true) => {
-                        output_string = format!("{}\n{}", format!("{}\n", err_lenght), table)
-                    }
-                    (true, true, true, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n", err_amount, err_pattern),
-                            table
-                        )
-                    }
-                    (true, true, true, true, false, true) => {
-                        output_string = format!("{}\n{}", format!("{}\n", err_amount), table)
-                    }
-                    (true, true, false, true, true, false) => {
-                        output_string =
-                            format!("{}\n{}", format!("{}\n{}\n", err_width, err_pattern), table)
-                    }
-                    (true, true, false, true, true, true) => {
-                        output_string = format!("{}\n{}", format!("{}\n", err_width), table)
-                    }
-                    (true, true, false, false, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!(
-                                "{}\n{}\n{}\n{}\n",
-                                err_width, err_lenght, err_amount, err_pattern
-                            ),
-                            table
-                        )
-                    }
-                    (true, true, false, false, false, true) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}", err_width, err_lenght, err_amount),
-                            table
-                        )
-                    }
-                    (true, true, false, true, false, false) => {
-                        output_string = format!(
-                            "{}\n{}",
-                            format!("{}\n{}\n{}\n", err_width, err_amount, err_pattern),
-                            table
-                        )
-                    }
-                    (true, true, false, true, false, true) => {
-                        output_string =
-                            format!("{}\n{}", format!("{}\n{}\n", err_width, err_amount), table)
-                    }
-                    (true, true, true, true, true, false) => {
-                        output_string = format!("{}\n{}", err_pattern, table)
-                    }
-                    (true, true, true, true, true, true) => {
-                        pieces_vec.push(vec![
-                            piece_choice.value().unwrap().to_string(),
-                            input_width.value().to_string(),
-                            input_length.value(),
-                            pattern.value().unwrap(),
-                            amount.value(),
-                        ]);
-                        table = Table::new();
-                        table.set_header(vec!["Type", "width", "length", "pattern", "amount"]);
-                        for piece in &pieces_vec {
-                            table.add_row(vec![
-                                piece[0].clone(),
-                                piece[1].clone(),
-                                piece[2].clone(),
-                                piece[3].clone(),
-                                piece[4].clone(),
+pub const NAME: &str = "FreeCut";
+const PAD: i32 = 10;
+const HEIGHT: i32 = PAD * 3;
+const WIDTH: i32 = HEIGHT * 3;
+
+fn main() -> Result<(), FltkError> {
+    let app = app::App::default();
+    cascade!(
+        Window::default().with_size(360, 640).center_screen();
+        ..set_label(NAME);
+        ..set_xclass("freecut");
+        ..size_range(360, 640, 0, 0);
+        ..set_icon(Some(
+            SvgImage::from_data(include_str!("../assets/logo.svg")).unwrap(),
+        ));
+        ..set_callback(move |window| {
+            if app::event() == Event::Close {
+                window.child(0).unwrap().do_callback();
+                app::quit();
+            }
+        });
+        ..make_resizable(true);
+        ..add(&cascade!(
+            Wizard::default_fill();
+            ..set_callback(move |wizard| wizard.child(0).unwrap().do_callback());
+            ..add(&page_optimizer());
+            ..add(&page_settings());
+            ..add(&page_doc("Manual", include_str!("../README.md")));
+            ..add(&page_doc("License", include_str!("../LICENSE")));
+            ..end();
+            ..handle(add_menu);
+        ));
+        ..end();
+    )
+    .show();
+    app::set_font(Font::CourierBold);
+    app.run()
+}
+
+enum Message {
+    Update = 41,
+}
+
+impl Message {
+    const fn event(self) -> Event {
+        Event::from_i32(self as i32)
+    }
+}
+
+fn page_optimizer() -> Flex {
+    const PATTERNS: [&str; 3] = ["none", "width", "length"];
+    const KINDS: [&str; 2] = ["cutpiece", "stockpiece"];
+    const UNITS: [&str; 3] = ["mm", "inch", "foot"];
+    const ERROR_RANGE: &str = "Value is out of range!";
+    const ERROR_PIECE: &str = "Add at least one stockpiece to the draft list!\nAdd at least one cutpiece to the draft list!\n";
+    let state = Rc::new(RefCell::new(models::Model::default()));
+    const UPDATE: Event = Message::Update.event();
+    cascade!(
+        Flex::default_fill().with_label("Optimizer").column();
+        ..set_margin(PAD);
+        ..set_pad(0);
+        ..set_callback(glib::clone!(#[strong] state, move |_| state.borrow().save()));
+        ..add(&cascade!(
+            Flex::default_fill();
+            ..set_margin(0);
+            ..set_pad(PAD);
+            ..fixed(&Frame::default(), WIDTH * 2);
+            ..add(&cascade!(
+                Flex::default_fill().column();
+                ..set_margin(0);
+                ..set_pad(PAD);
+                ..fixed(&cascade!(
+                    Button::default().with_label("@#refresh");
+                    ..set_label_color(Color::Red);
+                    ..set_tooltip("CLEAN");
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
+                        state.borrow_mut().clean();
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Choice::default().with_label("piece type");
+                    ..add_choice(&KINDS.join("|"));
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
+                        state.borrow_mut().piece_kind(choice.value());
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
+                        if event == UPDATE {
+                            choice.set_value(state.borrow().piece().kind());
+                        }
+                        false
+                    }));
+                    ..handle_event(UPDATE);
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Input::default().with_label("width:").with_type(InputType::Float);
+                    ..set_trigger(CallbackTrigger::Changed);
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
+                        if let Ok(value) = input.value().parse::<f32>() {
+                            if state.borrow().allowed_range(&value) {
+                                state.borrow_mut().piece_width(value);
+                                input.set_color(Color::Background2);
+                            } else {
+                                input.set_color(Color::Red);
+                                alert_default(ERROR_RANGE);
+                            }
+                        }
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
+                        if event == UPDATE {
+                            input.set_value(&state.borrow().piece().width());
+                        }
+                        false
+                    }));
+                    ..handle_event(UPDATE);
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Input::default().with_label("length:").with_type(InputType::Float);
+                    ..set_trigger(CallbackTrigger::Changed);
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
+                        if let Ok(value) = input.value().parse::<f32>() {
+                            if state.borrow().allowed_range(&value) {
+                                state.borrow_mut().piece_length(value);
+                                input.set_color(Color::Background2);
+                            } else {
+                                input.set_color(Color::Red);
+                                alert_default(ERROR_RANGE);
+                            }
+                        }
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
+                        if event == UPDATE {
+                            input.set_value(&state.borrow().piece().length());
+                        }
+                        false
+                    }));
+                    ..handle_event(UPDATE);
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Input::default().with_label("amount:").with_type(InputType::Int);
+                    ..set_trigger(CallbackTrigger::Changed);
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
+                        if let Ok(value) = input.value().parse::<f32>() {
+                            if state.borrow().allowed_range(&value) {
+                                state.borrow_mut().piece_amount(value as usize);
+                                input.set_color(Color::Background2);
+                            } else {
+                                input.set_color(Color::Red);
+                                alert_default(ERROR_RANGE);
+                            }
+                        }
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                    ..handle(glib::clone!(#[strong] state, move |input, event| {
+                        if event == UPDATE {
+                            input.set_value(&state.borrow().piece().amount());
+                        }
+                        false
+                    }));
+                    ..handle_event(UPDATE);
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Choice::default().with_label("pattern (parallel to):");
+                    ..add_choice(&PATTERNS.join("|"));
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
+                        state.borrow_mut().piece_pattern(choice.value());
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
+                        if event == UPDATE {
+                            choice.set_value(state.borrow().piece().pattern());
+                        }
+                        false
+                    }));
+                    ..handle_event(UPDATE);
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Button::default().with_label("@#+");
+                    ..set_label_color(Color::Green);
+                    ..set_tooltip("ADD PIECE");
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
+                        state.borrow_mut().add();
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Choice::default().with_label("unit");
+                    ..add_choice(&UNITS.join("|"));
+                    ..set_value(state.borrow().unit());
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
+                        state.borrow_mut().set_unit(choice.value());
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Input::default().with_label("cut_width:").with_type(InputType::Float);
+                    ..set_value(&state.borrow().width());
+                    ..set_trigger(CallbackTrigger::Changed);
+                    ..set_callback(glib::clone!(#[strong] state, move |input| {
+                        if let Ok(value) = input.value().parse::<f32>() {
+                            if (0.0..15.0).contains(&value) {
+                                state.borrow_mut().set_width(value);
+                                input.set_color(Color::Background2);
+                            } else {
+                                input.set_color(Color::Red);
+                                alert_default(ERROR_RANGE);
+                            }
+                        }
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Choice::default().with_label("layout:");
+                    ..add_choice("guillotine|nested");
+                    ..set_value(state.borrow().layout());
+                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
+                        state.borrow_mut().set_layout(choice.value());
+                    }));
+                ), HEIGHT);
+                ..fixed(&cascade!(
+                    Button::default().with_label("@#circle");
+                    ..set_tooltip("OPTIMIZE");
+                    ..set_callback(glib::clone!(#[strong] state, move |_| {
+                        let list: Vec<i32> = state.borrow().pieces().iter().map(|x| x.kind()).collect();
+                        if list.len() > 1 && list.contains(&0) && list.contains(&1) {
+                            message_default(&state.borrow_mut().optimize());
+                        } else {
+                            alert_default(ERROR_PIECE);
+                        }
+                        app::handle_main(UPDATE).unwrap();
+                    }));
+                ), HEIGHT);
+                ..add(&Frame::default());
+                ..end();
+            ));
+        ));
+        ..add(&Frame::default());
+        ..add(&cascade!(
+            TextDisplay::default();
+            ..set_tooltip("Output");
+            ..set_buffer(TextBuffer::default());
+            ..handle(glib::clone!(#[strong] state, move |display, event| {
+                if event == UPDATE {
+                    display.buffer().unwrap().set_text({
+                        let state = state.borrow();
+                        let unit = UNITS[state.unit() as usize];
+                        let mut table = Table::new();
+                        table.load_preset(presets::UTF8_FULL);
+                        table.apply_modifier(modifiers::UTF8_ROUND_CORNERS);
+                        table.set_header(["TYPE", &format!("WIDTH ({unit})"), &format!("LENGTH ({unit})"), "AMOUNT", "PATTERN"]);
+                        for piece in state.pieces() {
+                            table.add_row([
+                                KINDS[piece.kind() as usize],
+                                &piece.width(),
+                                &piece.length(),
+                                &piece.amount(),
+                                PATTERNS[piece.pattern() as usize],
                             ]);
                         }
-                        output_string = format!("{}", table);
-                    }
+                        &table.to_string()
+                    });
                 }
-            }
+                false
+            }));
+            ..handle_event(UPDATE);
+        ));
+        ..end();
+        ..handle(add_orientation);
+        ..handle_event(Event::Resize);
+    )
+}
+
+fn page_settings() -> Flex {
+    let mut prefs = Preferences::new(Root::USER_L, "fltk.org", "FLTK").unwrap();
+    let mut set = Preferences::new_group(&mut prefs, "Settings").unwrap();
+    cascade!(
+        Flex::default_fill().with_label(&set.name().unwrap());
+        ..set_margin(PAD);
+        ..set_pad(PAD);
+        ..add(&Frame::default());
+        ..fixed(&cascade!(
+            Flex::default_fill().column();
+            ..set_pad(PAD);
+            ..set_margin(PAD);
+            ..add(&Frame::default());
+            ..add(&cascade!(
+                Flex::default_fill();
+                ..fixed(&Frame::default(), WIDTH);
+                ..add(&cascade!(
+                    Flex::default_fill().column();
+                    ..set_color(Color::Foreground);
+                    ..set_pad(PAD);
+                    ..fixed(&cascade!(
+                        Choice::default().with_label("Theme");
+                        ..add_choice("Light|Dark");
+                        ..set_value(set.get_int("theme").unwrap_or(0));
+                        ..set_callback(move |choice| {
+                            set.set_int("theme", choice.value()).unwrap();
+                            let color = [
+                                [ //LIGHT
+                                    0xeee8d5, //base2
+                                    0xfdf6e3, //base3
+                                    0x586e75, //base01
+                                    0xcb4b16, //orange
+                                    0xb58900, //yellow
+                                ],
+                                [ //DARK
+                                    0x073642, //base02
+                                    0x002b36, //base03
+                                    0x93a1a1, //base1
+                                    0x6c71c4, //violet
+                                    0x268bd2, //blue
+                                ],
+                            ][choice.value() as usize];
+                            let (r, g, b) = Color::from_hex(color[0]).to_rgb();
+                            app::set_background_color(r, g, b);
+                            let (r, g, b) = Color::from_hex(color[1]).to_rgb();
+                            app::set_background2_color(r, g, b);
+                            let (r, g, b) = Color::from_hex(color[2]).to_rgb();
+                            app::set_foreground_color(r, g, b);
+                            let (r, g, b) = Color::from_hex(color[3]).to_rgb();
+                            app::set_selection_color(r, g, b);
+                            let (r, g, b) = Color::from_hex(color[4]).to_rgb();
+                            app::set_inactive_color(r, g, b);
+                            for (color, hex) in [
+                                (Color::Yellow, 0xb58900),
+                                (Color::Red, 0xdc322f),
+                                (Color::Magenta, 0xd33682),
+                                (Color::Blue, 0x268bd2),
+                                (Color::Cyan, 0x2aa198),
+                                (Color::Green, 0x859900),
+                            ] {
+                                let (r, g, b) = Color::from_hex(hex).to_rgb();
+                                app::set_color(color, r, g, b);
+                            }
+                            app::set_visible_focus(false);
+                            app::redraw();
+                        });
+                        ..do_callback();
+                    ), HEIGHT);
+                    ..end();
+                ));
+                ..end();
+            ));
+            ..add(&Frame::default());
+            ..end();
+        ), WIDTH * 3);
+        ..add(&Frame::default());
+        ..end();
+    )
+}
+
+fn page_doc(title: &str, body: &str) -> Flex {
+    cascade!(
+        Flex::default_fill().with_label(title);
+        ..set_margin(PAD);
+        ..add(&cascade!(
+            TextDisplay::default();
+            ..set_buffer(TextBuffer::default());
+            ..insert(body);
+        ));
+        ..end();
+    )
+}
+
+fn add_orientation(flex: &mut Flex, event: Event) -> bool {
+    if event == Event::Resize {
+        if let Some(window) = flex.window() {
+            flex.set_type(match window.w() < window.h() {
+                true => FlexType::Column,
+                false => FlexType::Row,
+            });
+            flex.fixed(&flex.child(0).unwrap(), 11 * HEIGHT + 10 * PAD);
+            flex.fixed(&flex.child(1).unwrap(), PAD);
         }
-        if opt_button_pressed {
-            output_altered = true;
-            opt_button_pressed = false;
-            if cut_width.value().is_empty()
-                || optimizer_layout.value().is_none()
-                || input_width.value().is_empty()
-                || input_length.value().is_empty()
-                || amount.value().is_empty()
-                || piece_choice.value().is_none()
-                || !allowed_cutw_range.contains(&cut_width.value().parse::<f32>().unwrap())
-            {
-                output_string = format!(
-                    "{}\n{}",
-                    "All fields must have a value,", "allowed cutwidth is between 0 and 15mm"
-                );
-                output.clear();
-                output.insert(1, &output_string);
-            } else {
-                let cutwidth = cut_width.value().parse().unwrap();
-                let (stockvec, cutvec) = read_user_input(&mut used_id, pieces_vec.clone());
-                Optimizer::add_stock_pieces(&mut optimizer, stockvec);
-                Optimizer::add_cut_pieces(&mut optimizer, cutvec);
-                let rand_num = random::<u64>();
-                Optimizer::set_random_seed(&mut optimizer, rand_num);
-                Optimizer::set_cut_width(&mut optimizer, cutwidth);
-                let callback = |_| ();
-                let result = if optimizer_layout.value() == Some("guillotine".to_string()) {
-                    Optimizer::optimize_guillotine(&optimizer, callback)
-                } else {
-                    Optimizer::optimize_nested(&optimizer, callback)
-                };
-                let solution: Solution;
-                match result {
-                    Ok(s) => {
-                        solution = s;
-                        create_solution_pdf(&rand_num.to_string(), solution);
-                        output_string =
-                            format!("{} solution_{}.pdf saved to disk!", "Outputfile", rand_num);
-                        output.clear();
-                        output.insert(1, &output_string);
-                    }
-                    Err(_) => {
-                        output_string = format!(
-                            "{}\n{}\n{}",
-                            "No solution, invalid input!",
-                            "If a pattern is selected for a stockpiece,",
-                            "you have to choose a possible pattern for all of the cutpieces!"
-                        );
-                        output.clear();
-                        output.insert(1, &output_string);
-                    }
-                }
+        return true;
+    }
+    false
+}
+
+fn add_menu(wizard: &mut Wizard, event: Event) -> bool {
+    match event {
+        Event::Push => match app::event_mouse_button() {
+            app::MouseButton::Right => {
+                cascade!(
+                    MenuButton::default();
+                    ..add_choice(
+                        &(0..wizard.children()).map(|x| {
+                            let label = wizard.child(x).unwrap().label();
+                            if wizard.try_current_widget().unwrap().label() == label {
+                                format!("@->  {}", label)
+                            } else {
+                                format!("@-  {}", label)
+                            }
+                        })
+                        .collect::<Vec<String>>()
+                        .join("|")
+                    );
+                    ..set_type(MenuButtonType::Popup3);
+                    ..set_callback({
+                        let mut wizard = wizard.clone();
+                        move |menu| {
+                            wizard.try_current_widget().unwrap().do_callback();
+                            wizard.set_current_widget(&wizard.child(menu.value()).unwrap());
+                        }
+                    });
+                )
+                .popup();
+                true
             }
+            _ => false,
+        },
+        Event::Enter => {
+            draw::set_cursor(Cursor::Hand);
+            true
         }
+        Event::Leave => {
+            draw::set_cursor(Cursor::Arrow);
+            true
+        }
+        _ => false,
     }
 }
