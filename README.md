@@ -7,8 +7,7 @@ This software is written in Rust using the Rust bindings for the FLTK Graphical 
 [comfy-table](https://crates.io/crates/comfy-table), [pdf-canvas](https://crates.io/crates/pdf-canvas) and the genetic algorithms and heuristics from the
 [cut-optimizer-2d](https://crates.io/crates/cut-optimizer-2d) crate.
 
-![Screenshot gui0](assets/freecut_screenshot0.png)
-![Screenshot gui1](assets/freecut_screenshot1.png)
+![Screenshot gui0](assets/freecut01.png)
 ![Screenshot pdf](assets/freecut_screenshot2.png)
 
 ## Installation
