@@ -6,14 +6,20 @@ use {
     std::{env, fs},
     uom::si::{
         f32::Length,
-        length::{foot, inch, millimeter},
+        length::{foot, inch, millimeter, point_computer},
     },
 };
 
-pub fn create_solution_pdf(random_seed: u64, solution: Solution) {
+pub fn create_solution_pdf(random_seed: u64, solution: Solution, unit: i32) {
     let mut document =
         Pdf::create(&format!("solution_{random_seed}.pdf")).expect("Create pdf file");
-    let pt = 2.834;
+    let pt = match unit {
+        1 => Length::new::<inch>(1.0).get::<point_computer>(),
+        2 => Length::new::<foot>(1.0).get::<point_computer>(),
+        _ => Length::new::<millimeter>(1.0).get::<point_computer>(),
+    };
+    dbg!(pt);
+    dbg!(unit);
     let mut text_output = Vec::new();
     let (mut doc_width, mut doc_lenght, mut x_os, mut y_os);
     doc_width = 595.0;
@@ -54,12 +60,24 @@ pub fn create_solution_pdf(random_seed: u64, solution: Solution) {
                 )?;
                 canvas.close_and_stroke()?;
                 stp_n += 1;
+                let short_unit = ["mm", "in", "ft"];
                 for cutp in stp.cut_pieces {
+                    let output_width = match unit {
+                        1 => Length::new::<millimeter>(cutp.width as f32).get::<inch>(),
+                        2 => Length::new::<millimeter>(cutp.width as f32).get::<foot>(),
+                        _ => cutp.width as f32,
+                    };
+                    let output_length = match unit {
+                        1 => Length::new::<millimeter>(cutp.length as f32).get::<inch>(),
+                        2 => Length::new::<millimeter>(cutp.length as f32).get::<foot>(),
+                        _ => cutp.length as f32,
+                    };
                     text_output.push(format!(
-                        "Id{}: {} x {}mm",
+                        "Id{}: {} x {}{}",
                         cutp.external_id.unwrap(),
-                        cutp.width,
-                        cutp.length
+                        output_width.round(),
+                        output_length.round(),
+                        short_unit[unit as usize]
                     ));
                     canvas.set_stroke_color(Color::rgb(0, 248, 0))?;
                     canvas.rectangle(
@@ -356,7 +374,7 @@ impl Model {
             0 => optimizer.optimize_guillotine(|_| ()),
             _ => optimizer.optimize_nested(|_| ()),
         } {
-            create_solution_pdf(random_seed, solution);
+            create_solution_pdf(random_seed, solution, self.unit);
             return format!("Outputfile solution_{random_seed}.pdf saved to disk!");
         }
         "No solution, invalid input!\nIf a pattern is selected for a stockpiece,\nyou have to choose a possible pattern for all of the cutpieces!".to_string()
@@ -366,3 +384,4 @@ impl Model {
 fn file() -> String {
     env::var("HOME").unwrap() + "/.config/" + crate::NAME
 }
+
