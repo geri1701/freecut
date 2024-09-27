@@ -384,4 +384,3 @@ impl Model {
 fn file() -> String {
     env::var("HOME").unwrap() + "/.config/" + crate::NAME
 }
-
