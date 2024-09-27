@@ -18,8 +18,6 @@ pub fn create_solution_pdf(random_seed: u64, solution: Solution, unit: i32) {
         2 => Length::new::<foot>(1.0).get::<point_computer>(),
         _ => Length::new::<millimeter>(1.0).get::<point_computer>(),
     };
-    dbg!(pt);
-    dbg!(unit);
     let mut text_output = Vec::new();
     let (mut doc_width, mut doc_lenght, mut x_os, mut y_os);
     doc_width = 595.0;
@@ -384,4 +382,3 @@ impl Model {
 fn file() -> String {
     env::var("HOME").unwrap() + "/.config/" + crate::NAME
 }
-
