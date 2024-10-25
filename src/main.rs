@@ -4,7 +4,6 @@ use {
     comfy_table::{modifiers, presets, Table},
     fltk::{
         app,
-        app::prefs::{Preferences, Root},
         button::Button,
         dialog::{alert_default, message_default},
         draw,
@@ -297,10 +296,8 @@ fn page_optimizer() -> Flex {
 }
 
 fn page_settings() -> Flex {
-    let mut prefs = Preferences::new(Root::USER_L, "fltk.org", "FLTK").unwrap();
-    let mut set = Preferences::new_group(&mut prefs, "Settings").unwrap();
     cascade!(
-        Flex::default_fill().with_label(&set.name().unwrap());
+        Flex::default_fill().with_label("Settings");
         ..set_margin(PAD);
         ..set_pad(PAD);
         ..add(&Frame::default());
@@ -318,10 +315,9 @@ fn page_settings() -> Flex {
                     ..set_pad(PAD);
                     ..fixed(&cascade!(
                         Choice::default().with_label("Theme");
-                        ..add_choice("Light|Dark");
-                        ..set_value(set.get_int("theme").unwrap_or(0));
+                        ..add_choice("Solarized Light|Solarized Dark");
+                        ..set_value(0);
                         ..set_callback(move |choice| {
-                            set.set_int("theme", choice.value()).unwrap();
                             let color = [
                                 [ //LIGHT
                                     0xeee8d5, //base2
@@ -338,6 +334,10 @@ fn page_settings() -> Flex {
                                     0x268bd2, //blue
                                 ],
                             ][choice.value() as usize];
+                            app::set_scheme(match choice.value() {
+                                0 => app::Scheme::Oxy,
+                                _ => app::Scheme::Gtk,
+                            });
                             let (r, g, b) = Color::from_hex(color[0]).to_rgb();
                             app::set_background_color(r, g, b);
                             let (r, g, b) = Color::from_hex(color[1]).to_rgb();
