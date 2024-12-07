@@ -81,7 +81,10 @@ fn page_optimizer() -> Flex {
         Flex::default_fill().with_label("Optimizer").column();
         ..set_margin(PAD);
         ..set_pad(0);
-        ..set_callback(glib::clone!(#[strong] state, move |_| state.borrow().save()));
+        ..set_callback({
+            let state = Rc::clone(&state);
+            move |_| state.borrow().save()
+        });
         ..add(&cascade!(
             Flex::default_fill();
             ..set_margin(0);
@@ -95,165 +98,213 @@ fn page_optimizer() -> Flex {
                     Button::default().with_label("@#refresh");
                     ..set_label_color(Color::Red);
                     ..set_tooltip("CLEAN");
-                    ..set_callback(glib::clone!(#[strong] state, move |_| {
-                        state.borrow_mut().clean();
-                        app::handle_main(UPDATE).unwrap();
-                    }));
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |_| {
+                            state.borrow_mut().clean();
+                            app::handle_main(UPDATE).unwrap();
+                        }
+                    });
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Choice::default().with_label("piece type");
                     ..add_choice(&KINDS.join("|"));
-                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
-                        state.borrow_mut().piece_kind(choice.value());
-                        app::handle_main(UPDATE).unwrap();
-                    }));
-                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
-                        if event == UPDATE {
-                            choice.set_value(state.borrow().piece().kind());
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |choice| {
+                            state.borrow_mut().piece_kind(choice.value());
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        false
-                    }));
+                    });
+                    ..handle({
+                        let state = Rc::clone(&state);
+                        move |choice, event| {
+                            if event == UPDATE {
+                                choice.set_value(state.borrow().piece().kind());
+                            }
+                            false
+                        }
+                    });
                     ..handle_event(UPDATE);
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Input::default().with_label("width:").with_type(InputType::Float);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(#[strong] state, move |input| {
-                        if let Ok(value) = input.value().parse::<f32>() {
-                            if state.borrow().allowed_range(&value) {
-                                state.borrow_mut().piece_width(value);
-                                input.set_color(Color::Background2);
-                            } else {
-                                input.set_color(Color::Red);
-                                alert_default(ERROR_RANGE);
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |input| {
+                            if let Ok(value) = input.value().parse::<f32>() {
+                                if state.borrow().allowed_range(&value) {
+                                    state.borrow_mut().piece_width(value);
+                                    input.set_color(Color::Background2);
+                                } else {
+                                    input.set_color(Color::Red);
+                                    alert_default(ERROR_RANGE);
+                                }
                             }
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        app::handle_main(UPDATE).unwrap();
-                    }));
-                    ..handle(glib::clone!(#[strong] state, move |input, event| {
-                        if event == UPDATE {
-                            input.set_value(&state.borrow().piece().width());
+                    });
+                    ..handle({
+                        let state = Rc::clone(&state);
+                        move |input, event| {
+                            if event == UPDATE {
+                                input.set_value(&state.borrow().piece().width());
+                            }
+                            false
                         }
-                        false
-                    }));
+                    });
                     ..handle_event(UPDATE);
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Input::default().with_label("length:").with_type(InputType::Float);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(#[strong] state, move |input| {
-                        if let Ok(value) = input.value().parse::<f32>() {
-                            if state.borrow().allowed_range(&value) {
-                                state.borrow_mut().piece_length(value);
-                                input.set_color(Color::Background2);
-                            } else {
-                                input.set_color(Color::Red);
-                                alert_default(ERROR_RANGE);
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |input| {
+                            if let Ok(value) = input.value().parse::<f32>() {
+                                if state.borrow().allowed_range(&value) {
+                                    state.borrow_mut().piece_length(value);
+                                    input.set_color(Color::Background2);
+                                } else {
+                                    input.set_color(Color::Red);
+                                    alert_default(ERROR_RANGE);
+                                }
                             }
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        app::handle_main(UPDATE).unwrap();
-                    }));
-                    ..handle(glib::clone!(#[strong] state, move |input, event| {
-                        if event == UPDATE {
-                            input.set_value(&state.borrow().piece().length());
+                    });
+                    ..handle({
+                        let state = Rc::clone(&state);
+                        move |input, event| {
+                            if event == UPDATE {
+                                input.set_value(&state.borrow().piece().length());
+                            }
+                            false
                         }
-                        false
-                    }));
+                    });
                     ..handle_event(UPDATE);
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Input::default().with_label("amount:").with_type(InputType::Int);
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(#[strong] state, move |input| {
-                        if let Ok(value) = input.value().parse::<f32>() {
-                            if state.borrow().allowed_range(&value) {
-                                state.borrow_mut().piece_amount(value as usize);
-                                input.set_color(Color::Background2);
-                            } else {
-                                input.set_color(Color::Red);
-                                alert_default(ERROR_RANGE);
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |input| {
+                            if let Ok(value) = input.value().parse::<f32>() {
+                                if state.borrow().allowed_range(&value) {
+                                    state.borrow_mut().piece_amount(value as usize);
+                                    input.set_color(Color::Background2);
+                                } else {
+                                    input.set_color(Color::Red);
+                                    alert_default(ERROR_RANGE);
+                                }
                             }
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        app::handle_main(UPDATE).unwrap();
-                    }));
-                    ..handle(glib::clone!(#[strong] state, move |input, event| {
-                        if event == UPDATE {
-                            input.set_value(&state.borrow().piece().amount());
+                    });
+                    ..handle({
+                        let state = Rc::clone(&state);
+                        move |input, event| {
+                            if event == UPDATE {
+                                input.set_value(&state.borrow().piece().amount());
+                            }
+                            false
                         }
-                        false
-                    }));
+                    });
                     ..handle_event(UPDATE);
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Choice::default().with_label("pattern (parallel to):");
                     ..add_choice(&PATTERNS.join("|"));
-                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
-                        state.borrow_mut().piece_pattern(choice.value());
-                        app::handle_main(UPDATE).unwrap();
-                    }));
-                    ..handle(glib::clone!(#[strong] state, move |choice, event| {
-                        if event == UPDATE {
-                            choice.set_value(state.borrow().piece().pattern());
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |choice| {
+                            state.borrow_mut().piece_pattern(choice.value());
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        false
-                    }));
+                    });
+                    ..handle({
+                        let state = Rc::clone(&state);
+                        move |choice, event| {
+                            if event == UPDATE {
+                                choice.set_value(state.borrow().piece().pattern());
+                            }
+                            false
+                        }
+                    });
                     ..handle_event(UPDATE);
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Button::default().with_label("@#+");
                     ..set_label_color(Color::Green);
                     ..set_tooltip("ADD PIECE");
-                    ..set_callback(glib::clone!(#[strong] state, move |_| {
-                        state.borrow_mut().add();
-                        app::handle_main(UPDATE).unwrap();
-                    }));
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |_| {
+                            state.borrow_mut().add();
+                            app::handle_main(UPDATE).unwrap();
+                        }
+                    });
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Choice::default().with_label("unit");
                     ..add_choice(&UNITS.join("|"));
                     ..set_value(state.borrow().unit());
-                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
-                        state.borrow_mut().set_unit(choice.value());
-                        app::handle_main(UPDATE).unwrap();
-                    }));
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |choice| {
+                            state.borrow_mut().set_unit(choice.value());
+                            app::handle_main(UPDATE).unwrap();
+                        }
+                    });
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Input::default().with_label("cut_width:").with_type(InputType::Float);
                     ..set_value(&state.borrow().width());
                     ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback(glib::clone!(#[strong] state, move |input| {
-                        if let Ok(value) = input.value().parse::<f32>() {
-                            if (0.0..15.0).contains(&value) {
-                                state.borrow_mut().set_width(value);
-                                input.set_color(Color::Background2);
-                            } else {
-                                input.set_color(Color::Red);
-                                alert_default(ERROR_RANGE);
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |input| {
+                            if let Ok(value) = input.value().parse::<f32>() {
+                                if (0.0..15.0).contains(&value) {
+                                    state.borrow_mut().set_width(value);
+                                    input.set_color(Color::Background2);
+                                } else {
+                                    input.set_color(Color::Red);
+                                    alert_default(ERROR_RANGE);
+                                }
                             }
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        app::handle_main(UPDATE).unwrap();
-                    }));
+                    });
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Choice::default().with_label("layout:");
                     ..add_choice("guillotine|nested");
                     ..set_value(state.borrow().layout());
-                    ..set_callback(glib::clone!(#[strong] state, move |choice| {
-                        state.borrow_mut().set_layout(choice.value());
-                    }));
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |choice| {
+                            state.borrow_mut().set_layout(choice.value());
+                        }
+                    });
                 ), HEIGHT);
                 ..fixed(&cascade!(
                     Button::default().with_label("@#circle");
                     ..set_tooltip("OPTIMIZE");
-                    ..set_callback(glib::clone!(#[strong] state, move |_| {
-                        let list: Vec<i32> = state.borrow().pieces().iter().map(|x| x.kind()).collect();
-                        if list.len() > 1 && list.contains(&0) && list.contains(&1) {
-                            message_default(&state.borrow_mut().optimize());
-                        } else {
-                            alert_default(ERROR_PIECE);
+                    ..set_callback({
+                        let state = Rc::clone(&state);
+                        move |_| {
+                            let list: Vec<i32> = state.borrow().pieces().iter().map(|x| x.kind()).collect();
+                            if list.len() > 1 && list.contains(&0) && list.contains(&1) {
+                                message_default(&state.borrow_mut().optimize());
+                            } else {
+                                alert_default(ERROR_PIECE);
+                            }
+                            app::handle_main(UPDATE).unwrap();
                         }
-                        app::handle_main(UPDATE).unwrap();
-                    }));
+                    });
                 ), HEIGHT);
                 ..add(&Frame::default());
                 ..end();
@@ -264,29 +315,32 @@ fn page_optimizer() -> Flex {
             TextDisplay::default();
             ..set_tooltip("Output");
             ..set_buffer(TextBuffer::default());
-            ..handle(glib::clone!(#[strong] state, move |display, event| {
-                if event == UPDATE {
-                    display.buffer().unwrap().set_text({
-                        let state = state.borrow();
-                        let unit = UNITS[state.unit() as usize];
-                        let mut table = Table::new();
-                        table.load_preset(presets::UTF8_FULL);
-                        table.apply_modifier(modifiers::UTF8_ROUND_CORNERS);
-                        table.set_header(["TYPE", &format!("WIDTH ({unit})"), &format!("LENGTH ({unit})"), "AMOUNT", "PATTERN"]);
-                        for piece in state.pieces() {
-                            table.add_row([
-                                KINDS[piece.kind() as usize],
-                                &piece.width(),
-                                &piece.length(),
-                                &piece.amount(),
-                                PATTERNS[piece.pattern() as usize],
-                            ]);
-                        }
-                        &table.to_string()
-                    });
+            ..handle({
+                let state = Rc::clone(&state);
+                move |display, event| {
+                    if event == UPDATE {
+                        display.buffer().unwrap().set_text({
+                            let state = state.borrow();
+                            let unit = UNITS[state.unit() as usize];
+                            let mut table = Table::new();
+                            table.load_preset(presets::UTF8_FULL);
+                            table.apply_modifier(modifiers::UTF8_ROUND_CORNERS);
+                            table.set_header(["TYPE", &format!("WIDTH ({unit})"), &format!("LENGTH ({unit})"), "AMOUNT", "PATTERN"]);
+                            for piece in state.pieces() {
+                                table.add_row([
+                                    KINDS[piece.kind() as usize],
+                                    &piece.width(),
+                                    &piece.length(),
+                                    &piece.amount(),
+                                    PATTERNS[piece.pattern() as usize],
+                                ]);
+                            }
+                            &table.to_string()
+                        });
+                    }
+                    false
                 }
-                false
-            }));
+            });
             ..handle_event(UPDATE);
         ));
         ..end();
