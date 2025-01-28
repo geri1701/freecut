@@ -11,7 +11,7 @@ keywords = ["gui", "cuts", "optimize", "optimization", "bin-packer"]
 [dependencies]
 cut-optimizer-2d = "0.4"
 pdf-canvas = "0.7"
-rand = "0.8"
+rand = "0.9"
 comfy-table = "7.1"
 fltk = "1.4"
 cascade = "1.0"
