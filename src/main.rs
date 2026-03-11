@@ -1,18 +1,18 @@
 mod models;
 use {
-    cascade::cascade,
-    comfy_table::{modifiers, presets, Table},
     fltk::{
         app,
+        browser::Browser,
         button::Button,
         dialog::{alert_default, message_default},
         draw,
-        enums::{CallbackTrigger, Color, Cursor, Event, Font},
+        enums::{CallbackTrigger, Color, Cursor, Event, Font, FrameType},
         frame::Frame,
         group::{Flex, FlexType, Wizard},
         image::SvgImage,
         input::{Input, InputType},
         menu::{Choice, MenuButton, MenuButtonType},
+        misc::Tooltip,
         prelude::*,
         text::{TextBuffer, TextDisplay},
         window::Window,
@@ -27,47 +27,57 @@ const WIDTH: i32 = HEIGHT * 3;
 
 fn main() -> Result<(), FltkError> {
     let app = app::App::default();
-    cascade!(
-        Window::default().with_size(360, 640).center_screen();
-        ..set_label(NAME);
-        ..set_xclass("freecut");
-        ..size_range(360, 640, 0, 0);
-        ..set_icon(Some(
-            SvgImage::from_data(include_str!("../assets/logo.svg")).unwrap(),
-        ));
-        ..set_callback(move |window| {
-            if app::event() == Event::Close {
-                window.child(0).unwrap().do_callback();
-                app::quit();
-            }
-        });
-        ..make_resizable(true);
-        ..add(&cascade!(
-            Wizard::default_fill();
-            ..set_callback(move |wizard| wizard.child(0).unwrap().do_callback());
-            ..add(&page_optimizer());
-            ..add(&page_settings());
-            ..add(&page_doc("Manual", include_str!("../README.md")));
-            ..add(&page_doc("License", include_str!("../LICENSE")));
-            ..end();
-            ..handle(add_menu);
-        ));
-        ..end();
-    )
-    .show();
+    app::set_scheme(app::Scheme::Base);
+    app::set_frame_type2(FrameType::UpBox, FrameType::ThinUpBox);
+    app::set_frame_type2(FrameType::DownBox, FrameType::ThinDownBox);
+    app::set_background_color(238, 232, 213);
+    app::set_background2_color(253, 246, 227);
+    app::set_foreground_color(7, 54, 66);
+    app::set_selection_color(203, 75, 22);
+    app::set_inactive_color(181, 137, 0);
+    Tooltip::set_color(Color::Background2);
+    Tooltip::set_text_color(Color::Foreground);
+    for (color, (r, g, b)) in [
+        (Color::Red, (220, 50, 47)),
+        (Color::Magenta, (211, 54, 130)),
+        (Color::Blue, (38, 139, 210)),
+        (Color::Cyan, (42, 161, 152)),
+        (Color::Green, (133, 153, 0)),
+    ] {
+        app::set_color(color, r, g, b);
+    }
+    app::set_visible_focus(false);
+    let mut wgt = Window::default().with_size(360, 640).center_screen();
+    wgt.set_label(NAME);
+    wgt.set_xclass("freecut");
+    wgt.size_range(360, 640, 0, 0);
+    wgt.set_icon(Some(
+        SvgImage::from_data(include_str!("../assets/logo.svg")).unwrap(),
+    ));
+    wgt.set_callback(move |window| {
+        if app::event() == Event::Close {
+            window.child(0).unwrap().do_callback();
+            app::quit();
+        }
+    });
+    wgt.make_resizable(true);
+    wgt.add(&{
+        let mut wgt = Wizard::default_fill();
+        wgt.set_callback(move |wizard| wizard.child(0).unwrap().do_callback());
+        wgt.add(&page_optimizer());
+        wgt.add(&page_doc("Manual", include_str!("../README.md")));
+        wgt.add(&page_doc("License", include_str!("../LICENSE")));
+        wgt.end();
+        wgt.handle(add_menu);
+        wgt
+    });
+    wgt.end();
+    wgt.show();
     app::set_font(Font::CourierBold);
     app.run()
 }
 
-enum Message {
-    Update = 41,
-}
-
-impl Message {
-    const fn event(self) -> Event {
-        Event::from_i32(self as i32)
-    }
-}
+const UPDATE: Event = Event::from_i32(404);
 
 fn page_optimizer() -> Flex {
     const PATTERNS: [&str; 3] = ["none", "width", "length"];
@@ -76,47 +86,34 @@ fn page_optimizer() -> Flex {
     const ERROR_RANGE: &str = "Value is out of range!";
     const ERROR_PIECE: &str = "Add at least one stockpiece to the draft list!\nAdd at least one cutpiece to the draft list!\n";
     let state = Rc::new(RefCell::new(models::Model::default()));
-    const UPDATE: Event = Message::Update.event();
-    cascade!(
-        Flex::default_fill().with_label("Optimizer").column();
-        ..set_margin(PAD);
-        ..set_pad(0);
-        ..set_callback({
-            let state = Rc::clone(&state);
-            move |_| state.borrow().save()
-        });
-        ..add(&cascade!(
-            Flex::default_fill();
-            ..set_margin(0);
-            ..set_pad(PAD);
-            ..fixed(&Frame::default(), WIDTH * 2);
-            ..add(&cascade!(
-                Flex::default_fill().column();
-                ..set_margin(0);
-                ..set_pad(PAD);
-                ..fixed(&cascade!(
-                    Button::default().with_label("@#refresh");
-                    ..set_label_color(Color::Red);
-                    ..set_tooltip("CLEAN");
-                    ..set_callback({
-                        let state = Rc::clone(&state);
-                        move |_| {
-                            state.borrow_mut().clean();
-                            app::handle_main(UPDATE).unwrap();
-                        }
-                    });
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Choice::default().with_label("piece type");
-                    ..add_choice(&KINDS.join("|"));
-                    ..set_callback({
+    let mut wgt = Flex::default_fill().with_label("Optimizer").column();
+    wgt.set_margin(PAD);
+    wgt.set_pad(0);
+    wgt.set_callback({
+        let state = Rc::clone(&state);
+        move |_| state.borrow().save()
+    });
+    wgt.add(&{
+        let mut wgt = Flex::default_fill();
+        wgt.set_margin(0);
+        wgt.set_pad(PAD);
+        wgt.fixed(&Frame::default(), WIDTH * 2);
+        wgt.add(&{
+            let mut wgt = Flex::default_fill().column();
+            wgt.set_margin(0);
+            wgt.set_pad(PAD);
+            wgt.fixed(
+                &{
+                    let mut wgt = Choice::default().with_label("piece type");
+                    wgt.add_choice(&KINDS.join("|"));
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |choice| {
                             state.borrow_mut().piece_kind(choice.value());
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                    ..handle({
+                    wgt.handle({
                         let state = Rc::clone(&state);
                         move |choice, event| {
                             if event == UPDATE {
@@ -125,12 +122,19 @@ fn page_optimizer() -> Flex {
                             false
                         }
                     });
-                    ..handle_event(UPDATE);
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Input::default().with_label("width:").with_type(InputType::Float);
-                    ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback({
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Input::default()
+                        .with_label("width:")
+                        .with_type(InputType::Float);
+                    wgt.set_color(Color::Background2);
+                    wgt.set_trigger(CallbackTrigger::Changed);
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |input| {
                             if let Ok(value) = input.value().parse::<f32>() {
@@ -145,7 +149,7 @@ fn page_optimizer() -> Flex {
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                    ..handle({
+                    wgt.handle({
                         let state = Rc::clone(&state);
                         move |input, event| {
                             if event == UPDATE {
@@ -154,12 +158,19 @@ fn page_optimizer() -> Flex {
                             false
                         }
                     });
-                    ..handle_event(UPDATE);
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Input::default().with_label("length:").with_type(InputType::Float);
-                    ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback({
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Input::default()
+                        .with_label("length:")
+                        .with_type(InputType::Float);
+                    wgt.set_color(Color::Background2);
+                    wgt.set_trigger(CallbackTrigger::Changed);
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |input| {
                             if let Ok(value) = input.value().parse::<f32>() {
@@ -174,7 +185,7 @@ fn page_optimizer() -> Flex {
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                    ..handle({
+                    wgt.handle({
                         let state = Rc::clone(&state);
                         move |input, event| {
                             if event == UPDATE {
@@ -183,12 +194,19 @@ fn page_optimizer() -> Flex {
                             false
                         }
                     });
-                    ..handle_event(UPDATE);
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Input::default().with_label("amount:").with_type(InputType::Int);
-                    ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback({
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Input::default()
+                        .with_label("amount:")
+                        .with_type(InputType::Int);
+                    wgt.set_color(Color::Background2);
+                    wgt.set_trigger(CallbackTrigger::Changed);
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |input| {
                             if let Ok(value) = input.value().parse::<f32>() {
@@ -203,7 +221,7 @@ fn page_optimizer() -> Flex {
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                    ..handle({
+                    wgt.handle({
                         let state = Rc::clone(&state);
                         move |input, event| {
                             if event == UPDATE {
@@ -212,19 +230,23 @@ fn page_optimizer() -> Flex {
                             false
                         }
                     });
-                    ..handle_event(UPDATE);
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Choice::default().with_label("pattern (parallel to):");
-                    ..add_choice(&PATTERNS.join("|"));
-                    ..set_callback({
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Choice::default().with_label("pattern (parallel to):");
+                    wgt.add_choice(&PATTERNS.join("|"));
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |choice| {
                             state.borrow_mut().piece_pattern(choice.value());
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                    ..handle({
+                    wgt.handle({
                         let state = Rc::clone(&state);
                         move |choice, event| {
                             if event == UPDATE {
@@ -233,37 +255,72 @@ fn page_optimizer() -> Flex {
                             false
                         }
                     });
-                    ..handle_event(UPDATE);
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Button::default().with_label("@#+");
-                    ..set_label_color(Color::Green);
-                    ..set_tooltip("ADD PIECE");
-                    ..set_callback({
-                        let state = Rc::clone(&state);
-                        move |_| {
-                            state.borrow_mut().add();
-                            app::handle_main(UPDATE).unwrap();
-                        }
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Flex::default_fill();
+                    wgt.set_margin(0);
+                    wgt.set_pad(0);
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@+");
+                        wgt.set_label_color(Color::Green);
+                        wgt.set_tooltip("ADD PIECE");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                state.borrow_mut().add();
+                                app::handle_main(UPDATE).unwrap();
+                            }
+                        });
+                        wgt
                     });
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Choice::default().with_label("unit");
-                    ..add_choice(&UNITS.join("|"));
-                    ..set_value(state.borrow().unit());
-                    ..set_callback({
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@1+");
+                        wgt.set_label_color(Color::Red);
+                        wgt.set_tooltip("POP");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                state.borrow_mut().pop();
+                                app::handle_main(UPDATE).unwrap();
+                            }
+                        });
+                        wgt
+                    });
+                    wgt.end();
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Choice::default().with_label("unit");
+                    wgt.add_choice(&UNITS.join("|"));
+                    wgt.set_value(state.borrow().unit());
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |choice| {
                             state.borrow_mut().set_unit(choice.value());
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Input::default().with_label("cut_width:").with_type(InputType::Float);
-                    ..set_value(&state.borrow().width());
-                    ..set_trigger(CallbackTrigger::Changed);
-                    ..set_callback({
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Input::default()
+                        .with_label("cut_width:")
+                        .with_type(InputType::Float);
+                    wgt.set_color(Color::Background2);
+                    wgt.set_value(&state.borrow().width());
+                    wgt.set_trigger(CallbackTrigger::Changed);
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |input| {
                             if let Ok(value) = input.value().parse::<f32>() {
@@ -278,25 +335,34 @@ fn page_optimizer() -> Flex {
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Choice::default().with_label("layout:");
-                    ..add_choice("guillotine|nested");
-                    ..set_value(state.borrow().layout());
-                    ..set_callback({
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Choice::default().with_label("layout:");
+                    wgt.add_choice("guillotine|nested");
+                    wgt.set_value(state.borrow().layout());
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |choice| {
                             state.borrow_mut().set_layout(choice.value());
                         }
                     });
-                ), HEIGHT);
-                ..fixed(&cascade!(
-                    Button::default().with_label("@#circle");
-                    ..set_tooltip("OPTIMIZE");
-                    ..set_callback({
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Button::default().with_label("@#circle");
+                    wgt.set_tooltip("OPTIMIZE");
+                    wgt.set_callback({
                         let state = Rc::clone(&state);
                         move |_| {
-                            let list: Vec<i32> = state.borrow().pieces().iter().map(|x| x.kind()).collect();
+                            let list: Vec<i32> =
+                                state.borrow().pieces().iter().map(|x| x.kind()).collect();
                             if list.len() > 1 && list.contains(&0) && list.contains(&1) {
                                 message_default(&state.borrow_mut().optimize());
                             } else {
@@ -305,142 +371,52 @@ fn page_optimizer() -> Flex {
                             app::handle_main(UPDATE).unwrap();
                         }
                     });
-                ), HEIGHT);
-                ..add(&Frame::default());
-                ..end();
-            ));
-        ));
-        ..add(&Frame::default());
-        ..add(&cascade!(
-            TextDisplay::default();
-            ..set_tooltip("Output");
-            ..set_buffer(TextBuffer::default());
-            ..handle({
-                let state = Rc::clone(&state);
-                move |display, event| {
-                    if event == UPDATE {
-                        display.buffer().unwrap().set_text({
-                            let state = state.borrow();
-                            let unit = UNITS[state.unit() as usize];
-                            let mut table = Table::new();
-                            table.load_preset(presets::UTF8_FULL);
-                            table.apply_modifier(modifiers::UTF8_ROUND_CORNERS);
-                            table.set_header(["TYPE", &format!("WIDTH ({unit})"), &format!("LENGTH ({unit})"), "AMOUNT", "PATTERN"]);
-                            for piece in state.pieces() {
-                                table.add_row([
-                                    KINDS[piece.kind() as usize],
-                                    &piece.width(),
-                                    &piece.length(),
-                                    &piece.amount(),
-                                    PATTERNS[piece.pattern() as usize],
-                                ]);
-                            }
-                            &table.to_string()
-                        });
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.add(&Frame::default());
+            wgt.end();
+            wgt
+        });
+        wgt
+    });
+    wgt.add(&Frame::default());
+    wgt.add(&{
+        let mut tbl = Browser::default();
+        tbl.set_tooltip("Output");
+        tbl.set_column_widths(&[100, 100, 120, 80, 100]);
+        tbl.handle({
+            let state = Rc::clone(&state);
+            move |tbl, event| {
+                if event == UPDATE {
+                    let state = state.borrow();
+                    let unit = UNITS[state.unit() as usize];
+                    tbl.clear();
+                    tbl.add(&format!(
+                        "@uTYPE\t@uWIDTH ({unit})\t@uLENGTH ({unit})\t@uAMOUNT\t@uPATTERN"
+                    ));
+                    for piece in state.pieces() {
+                        tbl.add(&format!(
+                            "{}\t{}\t{}\t{}\t{}",
+                            KINDS[piece.kind() as usize],
+                            &piece.width(),
+                            &piece.length(),
+                            &piece.amount(),
+                            PATTERNS[piece.pattern() as usize],
+                        ));
                     }
-                    false
                 }
-            });
-            ..handle_event(UPDATE);
-        ));
-        ..end();
-        ..handle(add_orientation);
-        ..handle_event(Event::Resize);
-    )
-}
-
-fn page_settings() -> Flex {
-    cascade!(
-        Flex::default_fill().with_label("Settings");
-        ..set_margin(PAD);
-        ..set_pad(PAD);
-        ..add(&Frame::default());
-        ..fixed(&cascade!(
-            Flex::default_fill().column();
-            ..set_pad(PAD);
-            ..set_margin(PAD);
-            ..add(&Frame::default());
-            ..add(&cascade!(
-                Flex::default_fill();
-                ..fixed(&Frame::default(), WIDTH);
-                ..add(&cascade!(
-                    Flex::default_fill().column();
-                    ..set_color(Color::Foreground);
-                    ..set_pad(PAD);
-                    ..fixed(&cascade!(
-                        Choice::default().with_label("Theme");
-                        ..add_choice("Solarized Light|Solarized Dark");
-                        ..set_value(0);
-                        ..set_callback(move |choice| {
-                            let color = [
-                                [ //LIGHT
-                                    0xeee8d5, //base2
-                                    0xfdf6e3, //base3
-                                    0x586e75, //base01
-                                    0xcb4b16, //orange
-                                    0xb58900, //yellow
-                                ],
-                                [ //DARK
-                                    0x073642, //base02
-                                    0x002b36, //base03
-                                    0x93a1a1, //base1
-                                    0x6c71c4, //violet
-                                    0x268bd2, //blue
-                                ],
-                            ][choice.value() as usize];
-                            app::set_scheme(match choice.value() {
-                                0 => app::Scheme::Oxy,
-                                _ => app::Scheme::Gtk,
-                            });
-                            let (r, g, b) = Color::from_hex(color[0]).to_rgb();
-                            app::set_background_color(r, g, b);
-                            let (r, g, b) = Color::from_hex(color[1]).to_rgb();
-                            app::set_background2_color(r, g, b);
-                            let (r, g, b) = Color::from_hex(color[2]).to_rgb();
-                            app::set_foreground_color(r, g, b);
-                            let (r, g, b) = Color::from_hex(color[3]).to_rgb();
-                            app::set_selection_color(r, g, b);
-                            let (r, g, b) = Color::from_hex(color[4]).to_rgb();
-                            app::set_inactive_color(r, g, b);
-                            for (color, hex) in [
-                                (Color::Yellow, 0xb58900),
-                                (Color::Red, 0xdc322f),
-                                (Color::Magenta, 0xd33682),
-                                (Color::Blue, 0x268bd2),
-                                (Color::Cyan, 0x2aa198),
-                                (Color::Green, 0x859900),
-                            ] {
-                                let (r, g, b) = Color::from_hex(hex).to_rgb();
-                                app::set_color(color, r, g, b);
-                            }
-                            app::set_visible_focus(false);
-                            app::redraw();
-                        });
-                        ..do_callback();
-                    ), HEIGHT);
-                    ..end();
-                ));
-                ..end();
-            ));
-            ..add(&Frame::default());
-            ..end();
-        ), WIDTH * 3);
-        ..add(&Frame::default());
-        ..end();
-    )
-}
-
-fn page_doc(title: &str, body: &str) -> Flex {
-    cascade!(
-        Flex::default_fill().with_label(title);
-        ..set_margin(PAD);
-        ..add(&cascade!(
-            TextDisplay::default();
-            ..set_buffer(TextBuffer::default());
-            ..insert(body);
-        ));
-        ..end();
-    )
+                false
+            }
+        });
+        tbl.handle_event(UPDATE);
+        tbl
+    });
+    wgt.end();
+    wgt.handle(add_orientation);
+    wgt.handle_event(Event::Resize);
+    wgt
 }
 
 fn add_orientation(flex: &mut Flex, event: Event) -> bool {
@@ -458,14 +434,27 @@ fn add_orientation(flex: &mut Flex, event: Event) -> bool {
     false
 }
 
+fn page_doc(title: &str, body: &str) -> Flex {
+    let mut wgt = Flex::default_fill().with_label(title);
+    wgt.set_margin(PAD);
+    wgt.add(&{
+        let mut wgt = TextDisplay::default();
+        wgt.set_buffer(TextBuffer::default());
+        wgt.insert(body);
+        wgt
+    });
+    wgt.end();
+    wgt
+}
+
 fn add_menu(wizard: &mut Wizard, event: Event) -> bool {
     match event {
         Event::Push => match app::event_mouse_button() {
             app::MouseButton::Right => {
-                cascade!(
-                    MenuButton::default();
-                    ..add_choice(
-                        &(0..wizard.children()).map(|x| {
+                let mut wgt = MenuButton::default();
+                wgt.add_choice(
+                    &(0..wizard.children())
+                        .map(|x| {
                             let label = wizard.child(x).unwrap().label();
                             if wizard.try_current_widget().unwrap().label() == label {
                                 format!("@->  {}", label)
@@ -474,18 +463,17 @@ fn add_menu(wizard: &mut Wizard, event: Event) -> bool {
                             }
                         })
                         .collect::<Vec<String>>()
-                        .join("|")
-                    );
-                    ..set_type(MenuButtonType::Popup3);
-                    ..set_callback({
-                        let mut wizard = wizard.clone();
-                        move |menu| {
-                            wizard.try_current_widget().unwrap().do_callback();
-                            wizard.set_current_widget(&wizard.child(menu.value()).unwrap());
-                        }
-                    });
-                )
-                .popup();
+                        .join("|"),
+                );
+                wgt.set_type(MenuButtonType::Popup3);
+                wgt.set_callback({
+                    let mut wizard = wizard.clone();
+                    move |menu| {
+                        wizard.try_current_widget().unwrap().do_callback();
+                        wizard.set_current_widget(&wizard.child(menu.value()).unwrap());
+                    }
+                });
+                wgt.popup();
                 true
             }
             _ => false,
