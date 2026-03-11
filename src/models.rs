@@ -1,5 +1,4 @@
 use {
-    cascade::cascade,
     cut_optimizer_2d::{CutPiece, Optimizer, PatternDirection, Solution, StockPiece},
     pdf_canvas::{graphicsstate::Color, BuiltinFont, Pdf},
     serde::{Deserialize, Serialize},
@@ -273,8 +272,8 @@ impl Model {
     pub fn layout(&self) -> i32 {
         self.layout
     }
-    pub fn clean(&mut self) {
-        self.pieces = Vec::from([Piece::default()]);
+    pub fn pop(&mut self) {
+        self.pieces.pop();
     }
     pub fn set_width(&mut self, value: f32) {
         self.width = value;
@@ -361,13 +360,11 @@ impl Model {
     pub fn optimize(&mut self) -> String {
         let (stock_pieces, cut_pieces) = self.unzip();
         let random_seed = rand::random::<u64>();
-        let optimizer = cascade!(
-            Optimizer::default();
-            ..set_random_seed(random_seed);
-            ..set_cut_width(self.uom(self.width));
-            ..add_stock_pieces(stock_pieces);
-            ..add_cut_pieces(cut_pieces);
-        );
+        let mut optimizer = Optimizer::default();
+        optimizer.set_random_seed(random_seed);
+        optimizer.set_cut_width(self.uom(self.width));
+        optimizer.add_stock_pieces(stock_pieces);
+        optimizer.add_cut_pieces(cut_pieces);
         if let Ok(solution) = match self.layout {
             0 => optimizer.optimize_guillotine(|_| ()),
             _ => optimizer.optimize_nested(|_| ()),
