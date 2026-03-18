@@ -2,7 +2,7 @@ mod models;
 use {
     fltk::{
         app,
-        browser::Browser,
+        browser::{Browser, BrowserType},
         button::Button,
         dialog::{alert_default, message_default},
         draw,
@@ -47,7 +47,7 @@ fn main() -> Result<(), FltkError> {
         app::set_color(color, r, g, b);
     }
     app::set_visible_focus(false);
-    let mut wgt = Window::default().with_size(360, 640).center_screen();
+    let mut wgt = Window::default().with_size(960, 540).center_screen();
     wgt.set_label(NAME);
     wgt.set_xclass("freecut");
     wgt.size_range(360, 640, 0, 0);
@@ -57,7 +57,7 @@ fn main() -> Result<(), FltkError> {
     wgt.set_callback(move |window| {
         if app::event() == Event::Close {
             window.child(0).unwrap().do_callback();
-            app::quit();
+            window.hide();
         }
     });
     wgt.make_resizable(true);
@@ -65,8 +65,7 @@ fn main() -> Result<(), FltkError> {
         let mut wgt = Wizard::default_fill();
         wgt.set_callback(move |wizard| wizard.child(0).unwrap().do_callback());
         wgt.add(&page_optimizer());
-        wgt.add(&page_doc("Manual", include_str!("../README.md")));
-        wgt.add(&page_doc("License", include_str!("../LICENSE")));
+        wgt.add(&page_doc());
         wgt.end();
         wgt.handle(add_menu);
         wgt
@@ -118,6 +117,31 @@ fn page_optimizer() -> Flex {
                         move |choice, event| {
                             if event == UPDATE {
                                 choice.set_value(state.borrow().piece().kind());
+                            }
+                            false
+                        }
+                    });
+                    wgt.handle_event(UPDATE);
+                    wgt
+                },
+                HEIGHT,
+            );
+            wgt.fixed(
+                &{
+                    let mut wgt = Choice::default().with_label("pattern (parallel to):");
+                    wgt.add_choice(&PATTERNS.join("|"));
+                    wgt.set_callback({
+                        let state = Rc::clone(&state);
+                        move |choice| {
+                            state.borrow_mut().piece_pattern(choice.value());
+                            app::handle_main(UPDATE).unwrap();
+                        }
+                    });
+                    wgt.handle({
+                        let state = Rc::clone(&state);
+                        move |choice, event| {
+                            if event == UPDATE {
+                                choice.set_value(state.borrow().piece().pattern());
                             }
                             false
                         }
@@ -237,31 +261,6 @@ fn page_optimizer() -> Flex {
             );
             wgt.fixed(
                 &{
-                    let mut wgt = Choice::default().with_label("pattern (parallel to):");
-                    wgt.add_choice(&PATTERNS.join("|"));
-                    wgt.set_callback({
-                        let state = Rc::clone(&state);
-                        move |choice| {
-                            state.borrow_mut().piece_pattern(choice.value());
-                            app::handle_main(UPDATE).unwrap();
-                        }
-                    });
-                    wgt.handle({
-                        let state = Rc::clone(&state);
-                        move |choice, event| {
-                            if event == UPDATE {
-                                choice.set_value(state.borrow().piece().pattern());
-                            }
-                            false
-                        }
-                    });
-                    wgt.handle_event(UPDATE);
-                    wgt
-                },
-                HEIGHT,
-            );
-            wgt.fixed(
-                &{
                     let mut wgt = Flex::default_fill();
                     wgt.set_margin(0);
                     wgt.set_pad(0);
@@ -280,12 +279,25 @@ fn page_optimizer() -> Flex {
                     });
                     wgt.add(&{
                         let mut wgt = Button::default().with_label("@1+");
-                        wgt.set_label_color(Color::Red);
+                        wgt.set_label_color(Color::Inactive);
                         wgt.set_tooltip("POP");
                         wgt.set_callback({
                             let state = Rc::clone(&state);
                             move |_| {
                                 state.borrow_mut().pop();
+                                app::handle_main(UPDATE).unwrap();
+                            }
+                        });
+                        wgt
+                    });
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@refresh");
+                        wgt.set_label_color(Color::Red);
+                        wgt.set_tooltip("CLEAR");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                state.borrow_mut().clear();
                                 app::handle_main(UPDATE).unwrap();
                             }
                         });
@@ -384,8 +396,10 @@ fn page_optimizer() -> Flex {
     wgt.add(&Frame::default());
     wgt.add(&{
         let mut tbl = Browser::default();
+        tbl.set_type(BrowserType::Normal);
+        tbl.set_text_size(16);
         tbl.set_tooltip("Output");
-        tbl.set_column_widths(&[100, 100, 120, 80, 100]);
+        tbl.set_column_widths(&[110, 110, 120, 80, 100]);
         tbl.handle({
             let state = Rc::clone(&state);
             move |tbl, event| {
@@ -419,32 +433,99 @@ fn page_optimizer() -> Flex {
     wgt
 }
 
+fn page_doc() -> Flex {
+    pub const LINE: i32 = PAD / 2;
+    let mut wgt = Flex::default_fill().with_label("Info");
+    wgt.set_pad(0);
+    wgt.set_margin(5);
+    wgt.add(&{
+        let mut wgt = TextDisplay::default();
+        wgt.set_buffer(TextBuffer::default());
+        wgt.set_frame(FrameType::ThinDownBox);
+        wgt.set_scrollbar_size(LINE);
+        wgt.insert(include_str!("../README.md"));
+        wgt
+    });
+    wgt.add(&{
+        let mut wgt = Frame::default();
+        wgt.handle(add_drag);
+        wgt
+    });
+    wgt.add(&{
+        let mut wgt = TextDisplay::default();
+        wgt.set_buffer(TextBuffer::default());
+        wgt.set_frame(FrameType::ThinDownBox);
+        wgt.set_scrollbar_size(LINE);
+        wgt.insert(include_str!("../LICENSE"));
+        wgt
+    });
+    wgt.end();
+    wgt.handle(add_orientation);
+    wgt.handle_event(Event::Resize);
+    wgt
+}
+
 fn add_orientation(flex: &mut Flex, event: Event) -> bool {
     if event == Event::Resize {
-        if let Some(window) = flex.window() {
-            flex.set_type(match window.w() < window.h() {
+        if flex.children() == 3 {
+            flex.set_type(match flex.w() < flex.h() {
                 true => FlexType::Column,
                 false => FlexType::Row,
             });
             flex.fixed(&flex.child(0).unwrap(), 11 * HEIGHT + 10 * PAD);
-            flex.fixed(&flex.child(1).unwrap(), PAD);
+            flex.fixed(&flex.child(1).unwrap(), flex.margin());
+            flex.fixed(&flex.child(2).unwrap(), 0);
         }
         return true;
     }
     false
 }
 
-fn page_doc(title: &str, body: &str) -> Flex {
-    let mut wgt = Flex::default_fill().with_label(title);
-    wgt.set_margin(PAD);
-    wgt.add(&{
-        let mut wgt = TextDisplay::default();
-        wgt.set_buffer(TextBuffer::default());
-        wgt.insert(body);
-        wgt
-    });
-    wgt.end();
-    wgt
+fn add_drag(wgt: &mut Frame, event: Event) -> bool {
+    let mut flex = Flex::from_dyn_widget(&wgt.parent().unwrap()).unwrap();
+    match event {
+        Event::Push => true,
+        Event::Drag => {
+            let child0 = flex.child(0).unwrap();
+            let child2 = flex.child(2).unwrap();
+            match flex.get_type() {
+                FlexType::Column => {
+                    let y = flex.margin() * 2 + wgt.h();
+                    if (y..(flex.h() - y) / 2).contains(&app::event_y()) {
+                        flex.fixed(&child2, flex.h() - app::event_y());
+                        flex.fixed(&child0, 0);
+                    } else if ((flex.h() - y) / 2..=(flex.h() - y)).contains(&app::event_y()) {
+                        flex.fixed(&child2, 0);
+                        flex.fixed(&child0, app::event_y());
+                    }
+                }
+                FlexType::Row => {
+                    let x = flex.margin() * 2 + wgt.w();
+                    if (x..=(flex.w() - x) / 2).contains(&app::event_x()) {
+                        flex.fixed(&child2, flex.w() - app::event_x());
+                        flex.fixed(&child0, 0);
+                    } else if ((flex.w() - x) / 2..=(flex.w() - x)).contains(&app::event_x()) {
+                        flex.fixed(&child0, app::event_x());
+                        flex.fixed(&child2, 0);
+                    }
+                }
+            }
+            app::redraw();
+            true
+        }
+        Event::Enter => {
+            draw::set_cursor(match flex.get_type() {
+                FlexType::Column => Cursor::NS,
+                FlexType::Row => Cursor::WE,
+            });
+            true
+        }
+        Event::Leave => {
+            draw::set_cursor(Cursor::Arrow);
+            true
+        }
+        _ => false,
+    }
 }
 
 fn add_menu(wizard: &mut Wizard, event: Event) -> bool {
