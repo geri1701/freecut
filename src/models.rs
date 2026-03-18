@@ -275,6 +275,9 @@ impl Model {
     pub fn pop(&mut self) {
         self.pieces.pop();
     }
+    pub fn clear(&mut self) {
+        self.pieces.clear();
+    }
     pub fn set_width(&mut self, value: f32) {
         self.width = value;
     }
