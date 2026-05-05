@@ -241,6 +241,19 @@ impl Model {
             pieces: Vec::from([Piece::default()]),
         }
     }
+    pub fn export(&self, val: &str) {
+        let mut wrt = csv::Writer::from_path(val).unwrap();
+        for rec in &self.pieces {
+            wrt.serialize(rec).unwrap();
+        }
+        wrt.flush().unwrap();
+    }
+    pub fn import(&mut self, val: &str) {
+        self.pieces = csv::Reader::from_reader(fs::read_to_string(val).unwrap().as_bytes())
+            .records()
+            .map(|row| row.unwrap().deserialize::<Piece>(None).unwrap())
+            .collect();
+    }
     pub fn allowed_range(&self, value: &f32) -> bool {
         const MIN: f32 = 1f32;
         const MAX: f32 = 100000f32;
@@ -380,5 +393,8 @@ impl Model {
 }
 
 fn file() -> String {
-    env::var("HOME").unwrap() + "/.config/" + crate::NAME
+    (match cfg!(target_os = "linux") {
+        true => env::var("HOME").unwrap() + "/.config/",
+        false => env::var("HOMEPATH").unwrap() + "/",
+    }) + crate::NAME
 }
