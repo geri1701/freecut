@@ -4,7 +4,7 @@ use {
         app,
         browser::{Browser, BrowserType},
         button::Button,
-        dialog::{alert_default, message_default},
+        dialog::{alert_default, message_default, FileChooser, FileChooserType},
         draw,
         enums::{CallbackTrigger, Color, Cursor, Event, Font, FrameType},
         frame::Frame,
@@ -26,7 +26,7 @@ const HEIGHT: i32 = PAD * 3;
 const WIDTH: i32 = HEIGHT * 3;
 
 fn main() -> Result<(), FltkError> {
-    let app = app::App::default();
+    let app = app::App::default().load_system_fonts();
     app::set_scheme(app::Scheme::Base);
     app::set_frame_type2(FrameType::UpBox, FrameType::ThinUpBox);
     app::set_frame_type2(FrameType::DownBox, FrameType::ThinDownBox);
@@ -47,6 +47,10 @@ fn main() -> Result<(), FltkError> {
         app::set_color(color, r, g, b);
     }
     app::set_visible_focus(false);
+    app::set_font(match cfg!(target_os = "windows") {
+        true => Font::by_name("BCascadia Mono"),
+        false => Font::CourierBold,
+    });
     let mut wgt = Window::default().with_size(960, 540).center_screen();
     wgt.set_label(NAME);
     wgt.set_xclass("freecut");
@@ -72,7 +76,6 @@ fn main() -> Result<(), FltkError> {
     });
     wgt.end();
     wgt.show();
-    app::set_font(Font::CourierBold);
     app.run()
 }
 
@@ -280,7 +283,7 @@ fn page_optimizer() -> Flex {
                     wgt.add(&{
                         let mut wgt = Button::default().with_label("@1+");
                         wgt.set_label_color(Color::Inactive);
-                        wgt.set_tooltip("POP");
+                        wgt.set_tooltip("ADD LAST PIECE");
                         wgt.set_callback({
                             let state = Rc::clone(&state);
                             move |_| {
@@ -293,7 +296,7 @@ fn page_optimizer() -> Flex {
                     wgt.add(&{
                         let mut wgt = Button::default().with_label("@refresh");
                         wgt.set_label_color(Color::Red);
-                        wgt.set_tooltip("CLEAR");
+                        wgt.set_tooltip("CLEAR ALL PIECES");
                         wgt.set_callback({
                             let state = Rc::clone(&state);
                             move |_| {
@@ -368,20 +371,56 @@ fn page_optimizer() -> Flex {
             );
             wgt.fixed(
                 &{
-                    let mut wgt = Button::default().with_label("@#circle");
-                    wgt.set_tooltip("OPTIMIZE");
-                    wgt.set_callback({
-                        let state = Rc::clone(&state);
-                        move |_| {
-                            let list: Vec<i32> =
-                                state.borrow().pieces().iter().map(|x| x.kind()).collect();
-                            if list.len() > 1 && list.contains(&0) && list.contains(&1) {
-                                message_default(&state.borrow_mut().optimize());
-                            } else {
-                                alert_default(ERROR_PIECE);
+                    let mut wgt = Flex::default_fill();
+                    wgt.set_margin(0);
+                    wgt.set_pad(0);
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@fileopen");
+                        wgt.set_label_color(Color::Blue);
+                        wgt.set_tooltip("IMPORT FROM CSV");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                if let Some(value) = choice_file("*.{csv}") {
+                                    state.borrow_mut().import(&value);
+                                    app::handle_main(UPDATE).unwrap();
+                                }
                             }
-                            app::handle_main(UPDATE).unwrap();
-                        }
+                        });
+                        wgt
+                    });
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@#circle");
+                        wgt.set_label_color(Color::Green);
+                        wgt.set_tooltip("OPTIMIZE");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                let list: Vec<i32> =
+                                    state.borrow().pieces().iter().map(|x| x.kind()).collect();
+                                if list.len() > 1 && list.contains(&0) && list.contains(&1) {
+                                    message_default(&state.borrow_mut().optimize());
+                                } else {
+                                    alert_default(ERROR_PIECE);
+                                }
+                                app::handle_main(UPDATE).unwrap();
+                            }
+                        });
+                        wgt
+                    });
+                    wgt.add(&{
+                        let mut wgt = Button::default().with_label("@filesave");
+                        wgt.set_label_color(Color::Blue);
+                        wgt.set_tooltip("EXPORT TO CSV");
+                        wgt.set_callback({
+                            let state = Rc::clone(&state);
+                            move |_| {
+                                if let Some(value) = choice_file("*.{csv}") {
+                                    state.borrow_mut().export(&value);
+                                }
+                            }
+                        });
+                        wgt
                     });
                     wgt
                 },
@@ -568,5 +607,26 @@ fn add_menu(wizard: &mut Wizard, event: Event) -> bool {
             true
         }
         _ => false,
+    }
+}
+
+fn choice_file(filter: &str) -> Option<String> {
+    let mut dialog = FileChooser::new(
+        std::env::var(match cfg!(target_os = "linux") {
+            true => "HOME",
+            false => "HOMEPATH",
+        })
+        .unwrap(),
+        filter,
+        FileChooserType::Create,
+        "Choce ...",
+    );
+    dialog.show();
+    while dialog.shown() {
+        app::wait();
+    }
+    match dialog.count() {
+        0 => None,
+        _ => dialog.value(1),
     }
 }
