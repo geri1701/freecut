@@ -15,15 +15,23 @@ env:
 
 jobs:
   make:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 120
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        arch:
+          - x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Build
+      - name: Build on Unix
+        if: runner.os != 'Windows'
         run: |
           sudo bash -c '
             apt-get update
@@ -32,3 +40,9 @@ jobs:
           cargo clippy --quiet
           cargo build --release
           cargo fmt --check --all
+
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          & cargo build | Out-Host
