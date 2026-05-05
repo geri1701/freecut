@@ -1,51 +1,78 @@
-# freecut
+# Freecut
 
-freecut is a free and open source cut optimizer software for optimizing rectangular cut pieces from panels.
-It is easy to use and after you have made the entries in the gui, a pdf file is created with the result.
+![Freecut logo](assets/freecut-logo.png)
 
-This software is written in Rust using the Rust bindings for the FLTK Graphical User Interface library [fltk-rs](https://crates.io/crates/fltk),
-[comfy-table](https://crates.io/crates/comfy-table), [pdf-canvas](https://crates.io/crates/pdf-canvas) and the genetic algorithms and heuristics from the
-[cut-optimizer-2d](https://crates.io/crates/cut-optimizer-2d) crate.
+Freecut is a free and open source desktop application for optimizing rectangular panel cuts.
 
-![Screenshot gui0](assets/freecut01.png)
-![Screenshot pdf](assets/freecut_screenshot2.png)
+It helps you plan how to cut stock sheets into required parts, with editable cut lists, configurable kerf width, visual solution previews, and PDF export.
 
-## Installation
+![Freecut 2.0 graphical solution preview](assets/freecut-2-gui.png)
 
-### Linux and other
+![Freecut 2.0 PDF export](assets/freecut-2-pdf-export.png)
 
-First install `cargo` and `cmake`, which is a dependency of fltk-sys.
+## Freecut 2.0
 
-Now, compile the freecut-crate:
+Freecut 2.0 is a full Rust rewrite of the original Freecut application.
 
+The classic FLTK-based implementation remains available in the Git history and as release `1.1.13`. Starting with Freecut 2.0, the project uses a new domain-centered implementation with an egui desktop interface, project files, CSV import, graphical previews, and improved export infrastructure.
+
+This is an intentional hard transition: the old project history is preserved, while the new implementation becomes the main Freecut codebase.
+
+## Features
+
+- Editable stock sheet and cut piece lists
+- Guillotine and nested layout modes
+- Configurable kerf width
+- Millimeter, inch, and foot project units
+- Pattern direction handling
+- Deterministic optimizer behavior
+- Interactive graphical solution preview
+- Red kerf/gap visualization in the GUI and PDF export
+- PDF export with sheet drawings and cut lists
+- CSV import for stock and cut lists
+- Project save/load support
+- English and German user interface
+
+## Platform status
+
+Freecut 2.0 is developed and tested primarily on NixOS/Linux.
+
+Linux users can build and run Freecut directly with Cargo when Rust and the native `egui`/`eframe` GUI dependencies are installed:
+
+```sh
+cargo run
 ```
-cargo install freecut
+
+A Nix flake is included as the recommended reproducible development environment:
+
+```sh
+direnv allow
+cargo run
 ```
-## Usage
 
-This software helps you to optimize panel cuts.
+Packaging for Arch Linux/AUR is planned separately.
 
-### Add a stockpiece
+Freecut uses `egui`/`eframe` and is intended to support Linux, Windows, and macOS. Windows and macOS release builds still need dedicated testing before they are advertised as stable.
 
-To add a stockpiece, fill all fields and press the "add" Button, the stockpiece will apear in the table
-in the output fields.
+CSV import is intentionally data-only: it imports stock and cut rows, but project settings such as unit, kerf width, layout, and optimizer effort remain project settings.
 
-### Add a cutpiece
+## Development checks
 
-To add a cutpiece, fill all fields and press the "add" Button, the cutpiece will apear in the table in the
-output.
+```sh
+cargo fmt --check
+cargo test --all
+cargo clippy -- -D warnings
+cargo clippy -- -W clippy::pedantic
+```
 
-### Pattern
+## Classic Freecut
 
-If a pattern on the workpiece is to be taken into account, then select the respective direction.
-In this case, however, a pattern must also be selected on each cutpiece.
+The last classic release is preserved as tag `1.1.13`.
 
-### Optimize
+## Credits
 
-Choose a cutwidth between 1 and 15mm and a prefered Layout.
-Guillotine-Layout is better for panel-saws.
-Now press the [optimize]-Button and a pdf-File with a solution will be generated.
+See [CREDITS.md](CREDITS.md).
 
-## Contributions
+## License
 
-Contributions are welcome, please create an issue or pull request.
+Freecut is licensed under the Apache License, Version 2.0.
