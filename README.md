@@ -1,6 +1,8 @@
 # Freecut
 
-![Freecut logo](assets/freecut-logo.png)
+<p align="center">
+  <img src="assets/freecut-logo.png" alt="Freecut logo" width="180">
+</p>
 
 Freecut is a free and open source desktop application for optimizing rectangular panel cuts.
 
