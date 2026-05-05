@@ -290,6 +290,7 @@ impl Model {
     }
     pub fn clear(&mut self) {
         self.pieces.clear();
+        self.add();
     }
     pub fn set_width(&mut self, value: f32) {
         self.width = value;
