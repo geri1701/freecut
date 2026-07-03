@@ -1063,6 +1063,15 @@ fn compare_cut_instances_for_first_fit(left: &CutInstance, right: &CutInstance) 
         .then_with(|| left.instance.cmp(&right.instance))
 }
 
+fn compare_stock_instances_for_first_fit(left: &StockInstance, right: &StockInstance) -> Ordering {
+    right
+        .width
+        .cmp(&left.width)
+        .then_with(|| right.length.cmp(&left.length))
+        .then_with(|| left.stock_id.0.cmp(&right.stock_id.0))
+        .then_with(|| left.instance.cmp(&right.instance))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct BaselineGuillotineHeuristic {
     rect_choice: GuillotineRectChoice,
@@ -2428,6 +2437,10 @@ fn expand_project(project: &Project) -> Result<ProblemInstance, OptimizeError> {
             "project contains cut pieces but no finite stock instances".to_string(),
         ));
     }
+
+    // Stock input order is UI/import detail, not problem semantics. Canonicalize it before
+    // first-fit candidate construction so a project file's row order cannot decide feasibility.
+    stock.sort_by(compare_stock_instances_for_first_fit);
 
     Ok(ProblemInstance {
         stock,
