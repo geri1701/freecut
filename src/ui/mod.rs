@@ -324,22 +324,40 @@ impl UiTexts {
         }
     }
 
-    fn optimize_error_message(self, error: OptimizeError) -> String {
+    fn optimize_error_message(self, error: OptimizeError, effort: OptimizerEffort) -> String {
         match error {
             OptimizeError::EmptyInput => match self.language {
                 UiLanguage::English => "No optimizable input".to_string(),
                 UiLanguage::German => "Keine optimierbaren Eingaben".to_string(),
             },
-            OptimizeError::NoSolution => match self.language {
-                UiLanguage::English => "No solution found for the current input".to_string(),
-                UiLanguage::German => {
-                    "Keine Lösung für die aktuellen Eingaben gefunden".to_string()
-                }
-            },
+            OptimizeError::NoSolution => self.no_solution_message(effort),
             OptimizeError::InvalidProject(message) => match self.language {
                 UiLanguage::English => format!("Invalid project: {message}"),
                 UiLanguage::German => format!("Ungültiges Projekt: {message}"),
             },
+        }
+    }
+
+    fn no_solution_message(self, effort: OptimizerEffort) -> String {
+        match (self.language, effort) {
+            (UiLanguage::English, OptimizerEffort::Fast) => {
+                "No solution found with Fast effort. Try Balanced or Thorough before assuming the project cannot be cut.".to_string()
+            }
+            (UiLanguage::English, OptimizerEffort::Balanced) => {
+                "No solution found with Balanced effort. Try Thorough before assuming the project cannot be cut.".to_string()
+            }
+            (UiLanguage::English, OptimizerEffort::Thorough) => {
+                "No solution found for the current input with Thorough effort.".to_string()
+            }
+            (UiLanguage::German, OptimizerEffort::Fast) => {
+                "Mit Optimierungsstufe Schnell wurde keine Lösung gefunden. Versuche Ausgewogen oder Gründlich, bevor du annimmst, dass das Projekt nicht zuschneidbar ist.".to_string()
+            }
+            (UiLanguage::German, OptimizerEffort::Balanced) => {
+                "Mit Optimierungsstufe Ausgewogen wurde keine Lösung gefunden. Versuche Gründlich, bevor du annimmst, dass das Projekt nicht zuschneidbar ist.".to_string()
+            }
+            (UiLanguage::German, OptimizerEffort::Thorough) => {
+                "Mit Optimierungsstufe Gründlich wurde keine Lösung für die aktuellen Eingaben gefunden.".to_string()
+            }
         }
     }
 
@@ -2045,7 +2063,7 @@ fn optimize_current_project(state: &mut FreecutAppState) {
         }
         Err(error) => {
             state.solution = None;
-            state.error_message = Some(texts.optimize_error_message(error));
+            state.error_message = Some(texts.optimize_error_message(error, state.optimizer_effort));
         }
     }
 }
@@ -2961,7 +2979,29 @@ mod tests {
         assert!(state.solution.is_none());
         assert_eq!(
             state.error_message,
-            Some("No solution found for the current input".to_string())
+            Some("No solution found with Fast effort. Try Balanced or Thorough before assuming the project cannot be cut.".to_string())
+        );
+    }
+
+    #[test]
+    fn optimize_action_guides_user_to_stronger_effort_when_balanced_finds_no_solution() {
+        let mut state = FreecutAppState {
+            optimizer_effort: OptimizerEffort::Balanced,
+            ..FreecutAppState::default()
+        };
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.project.stock_pieces[0].width = 50;
+        state.project.stock_pieces[0].length = 50;
+        state.project.cut_pieces[0].width = 100;
+        state.project.cut_pieces[0].length = 100;
+
+        optimize_current_project(&mut state);
+
+        assert!(state.solution.is_none());
+        assert_eq!(
+            state.error_message,
+            Some("No solution found with Balanced effort. Try Thorough before assuming the project cannot be cut.".to_string())
         );
     }
 
@@ -2983,7 +3023,7 @@ mod tests {
         assert!(state.solution.is_none());
         assert_eq!(
             state.error_message,
-            Some("Keine Lösung für die aktuellen Eingaben gefunden".to_string())
+            Some("Mit Optimierungsstufe Schnell wurde keine Lösung gefunden. Versuche Ausgewogen oder Gründlich, bevor du annimmst, dass das Projekt nicht zuschneidbar ist.".to_string())
         );
     }
 
