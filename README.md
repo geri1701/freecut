@@ -24,7 +24,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 
 - Editable stock sheet and cut piece lists
 - Guillotine and nested layout modes
-- Configurable kerf width
+- Configurable kerf width with decimal and fractional measurements
 - Millimeter, inch, and foot project units
 - Pattern direction handling
 - Deterministic optimizer behavior

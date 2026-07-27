@@ -29,7 +29,9 @@ pub enum PatternDirection {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StockPiece {
     pub id: PieceId,
+    /// Width in `measurement` geometry ticks.
     pub width: u32,
+    /// Length in `measurement` geometry ticks.
     pub length: u32,
     pub quantity: Option<u32>,
     pub pattern: PatternDirection,
@@ -39,7 +41,9 @@ pub struct StockPiece {
 pub struct CutPiece {
     pub id: PieceId,
     pub label: String,
+    /// Width in `measurement` geometry ticks.
     pub width: u32,
+    /// Length in `measurement` geometry ticks.
     pub length: u32,
     pub quantity: u32,
     pub pattern: PatternDirection,
@@ -51,7 +55,9 @@ pub struct PieceId(pub u64);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CutSettings {
+    /// Unit used to parse and display project measurements.
     pub unit: Unit,
+    /// Kerf width in `measurement` geometry ticks.
     pub kerf_width: u32,
     pub layout: LayoutKind,
 }
