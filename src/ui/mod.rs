@@ -1494,7 +1494,7 @@ fn draw_solution_sheet(
     } else {
         ui.visuals().widgets.noninteractive.fg_stroke.color
     };
-    let border_width = if selected { 3.0 } else { 1.5 };
+    let border_width = if selected { 3.0_f32 } else { 1.5_f32 };
     painter.rect_stroke(
         sheet_rect,
         0.0,
@@ -1736,7 +1736,7 @@ fn piece_fill_color(piece: &PlacedPiece, highlighted: bool) -> egui::Color32 {
 }
 
 fn piece_highlight_stroke() -> egui::Stroke {
-    egui::Stroke::new(2.5, PIECE_HIGHLIGHT_STROKE_COLOR)
+    egui::Stroke::new(2.5_f32, PIECE_HIGHLIGHT_STROKE_COLOR)
 }
 
 fn piece_boundary_stroke() -> egui::Stroke {
