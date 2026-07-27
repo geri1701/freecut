@@ -2,6 +2,7 @@ use freecut::{
     domain::{
         CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
     },
+    measurement::parse_length,
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_document_from_str, PROJECT_FILE_VERSION},
     render::Rect,
@@ -177,6 +178,26 @@ fn guillotine_thorough_is_independent_of_stock_input_order_for_issue_35() {
             21
         );
         assert_solution_within_bounds_and_non_overlapping(&solution);
+    }
+}
+
+#[test]
+fn fractional_inch_kerf_controls_exact_fit_for_all_layouts() {
+    for layout in [LayoutKind::Guillotine, LayoutKind::Nested] {
+        let exact = fractional_kerf_project(layout, "1/8");
+        let too_wide = fractional_kerf_project(layout, "0.126");
+
+        let solution = BaselineOptimizer
+            .optimize_with_config(&exact, OptimizerConfig::new(OptimizerEffort::Fast))
+            .expect("two pieces and a 1/8 inch kerf should fit exactly");
+        let error = BaselineOptimizer
+            .optimize_with_config(&too_wide, OptimizerConfig::new(OptimizerEffort::Fast))
+            .expect_err("a kerf wider than 1/8 inch should not fit");
+
+        assert_eq!(solution.sheets.len(), 1);
+        assert_eq!(solution.sheets[0].placed_pieces.len(), 2);
+        assert_solution_within_bounds_and_non_overlapping(&solution);
+        assert_eq!(error, OptimizeError::NoSolution);
     }
 }
 
@@ -394,6 +415,35 @@ fn rotation_disabled_regression_project(layout: LayoutKind, disabled_cut_id: u64
         settings: CutSettings {
             unit: Unit::Millimeter,
             kerf_width: 2,
+            layout,
+        },
+    }
+}
+
+fn fractional_kerf_project(layout: LayoutKind, kerf: &str) -> Project {
+    let inch = |source| parse_length(source, Unit::Inch).expect("fixture length parses");
+
+    Project {
+        name: "fractional-inch-kerf".to_string(),
+        stock_pieces: vec![StockPiece {
+            id: PieceId(1),
+            width: inch("2 1/8"),
+            length: inch("1"),
+            quantity: Some(1),
+            pattern: PatternDirection::None,
+        }],
+        cut_pieces: vec![CutPiece {
+            id: PieceId(2),
+            label: "one-inch-square".to_string(),
+            width: inch("1"),
+            length: inch("1"),
+            quantity: 2,
+            pattern: PatternDirection::None,
+            can_rotate: false,
+        }],
+        settings: CutSettings {
+            unit: Unit::Inch,
+            kerf_width: inch(kerf),
             layout,
         },
     }

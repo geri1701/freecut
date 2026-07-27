@@ -18,8 +18,8 @@ The header must contain these logical columns:
 | Logical column | Accepted header names | Meaning |
 | --- | --- | --- |
 | `label` | `label`, `name` | Cut-piece label/name. Required for cut rows. Ignored for stock rows. |
-| `width` | `width` | Piece width as a positive integer in the current project unit. |
-| `length` | `length` | Piece length as a positive integer in the current project unit. |
+| `width` | `width` | Piece width as a positive decimal or fraction in the current project unit. |
+| `length` | `length` | Piece length as a positive decimal or fraction in the current project unit. |
 | `quantity` | `quantity`, `amount` | Positive integer quantity. |
 
 ## Optional columns
@@ -38,7 +38,8 @@ The header must contain these logical columns:
 - Valid rows are imported even if other rows contain errors.
 - Errors are reported per row.
 - Imported pieces receive new `PieceId`s after the current maximum project ID.
-- Imported dimensions are stored as integer values in the current project unit; unit conversion is not part of this import phase.
+- Dimensions use the current project unit and accept whole numbers (`12`), decimals (`12.5`), fractions (`1/8`), and mixed fractions (`12 1/8`).
+- Decimal commas must be quoted in comma-separated CSV, for example `"12,5"`.
 
 ## Example
 

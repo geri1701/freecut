@@ -13,6 +13,9 @@ use crate::{
     },
     export::export_solution_pdf_file,
     import::{import_project_csv_file, CsvImportResult},
+    measurement::{
+        format_length, length_as_f64, length_from_f64, length_from_whole_units, parse_length,
+    },
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_file, save_project_file, ProjectDocument, PROJECT_FILE_EXTENSION},
     render::{
@@ -22,7 +25,6 @@ use crate::{
 };
 
 const APP_TITLE: &str = "Freecut";
-const MAX_DIMENSION: u32 = 100_000;
 const MAX_QUANTITY: u32 = 100_000;
 const VALIDATION_ERROR_PREFIX_EN: &str = "Input error:";
 const VALIDATION_ERROR_PREFIX_DE: &str = "Eingabefehler:";
@@ -1002,9 +1004,11 @@ impl FreecutApp {
                 ui.end_row();
 
                 ui.label(texts.kerf_width_label());
+                let unit = self.state.project.settings.unit;
                 changed |= ui
                     .add(dimension_drag_value(
                         &mut self.state.project.settings.kerf_width,
+                        unit,
                     ))
                     .changed();
                 ui.end_row();
@@ -1085,6 +1089,7 @@ impl FreecutApp {
 
     fn stock_editor(&mut self, ui: &mut egui::Ui) {
         let texts = UiTexts::new(self.state.language);
+        let unit = self.state.project.settings.unit;
 
         ui.horizontal(|ui| {
             ui.heading(texts.stock_editor_heading());
@@ -1129,10 +1134,16 @@ impl FreecutApp {
 
                     let mut changed = false;
                     changed |= ui
-                        .add(dimension_drag_value(&mut stock.width).prefix(texts.width_prefix()))
+                        .add(
+                            dimension_drag_value(&mut stock.width, unit)
+                                .prefix(texts.width_prefix()),
+                        )
                         .changed();
                     changed |= ui
-                        .add(dimension_drag_value(&mut stock.length).prefix(texts.length_prefix()))
+                        .add(
+                            dimension_drag_value(&mut stock.length, unit)
+                                .prefix(texts.length_prefix()),
+                        )
                         .changed();
 
                     let mut quantity = stock.quantity.unwrap_or(0);
@@ -1174,6 +1185,7 @@ impl FreecutApp {
 
     fn cut_editor(&mut self, ui: &mut egui::Ui) {
         let texts = UiTexts::new(self.state.language);
+        let unit = self.state.project.settings.unit;
 
         ui.horizontal(|ui| {
             ui.heading(texts.cut_editor_heading());
@@ -1221,10 +1233,15 @@ impl FreecutApp {
                     let mut changed = false;
                     changed |= ui.text_edit_singleline(&mut cut.label).changed();
                     changed |= ui
-                        .add(dimension_drag_value(&mut cut.width).prefix(texts.width_prefix()))
+                        .add(
+                            dimension_drag_value(&mut cut.width, unit).prefix(texts.width_prefix()),
+                        )
                         .changed();
                     changed |= ui
-                        .add(dimension_drag_value(&mut cut.length).prefix(texts.length_prefix()))
+                        .add(
+                            dimension_drag_value(&mut cut.length, unit)
+                                .prefix(texts.length_prefix()),
+                        )
                         .changed();
                     changed |= ui
                         .add(quantity_drag_value(&mut cut.quantity).prefix(texts.quantity_prefix()))
@@ -1336,8 +1353,8 @@ impl FreecutApp {
                                 "{} #{} · {} x {} · {} {} · {} {}",
                                 texts.stock_label(),
                                 sheet.stock_id.0,
-                                sheet.width,
-                                sheet.length,
+                                format_length(sheet.width, self.state.project.settings.unit),
+                                format_length(sheet.length, self.state.project.settings.unit),
                                 sheet.placed_pieces.len(),
                                 texts.cuts_count_label(),
                                 sheet.waste.len(),
@@ -1765,8 +1782,8 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
                     ui.label(texts.input_dimensions_quantity_heading());
                     ui.label(format!(
                         "{} x {} · {} {}",
-                        cut.width,
-                        cut.length,
+                        format_length(cut.width, state.project.settings.unit),
+                        format_length(cut.length, state.project.settings.unit),
                         texts.quantity_value_label(),
                         cut.quantity
                     ));
@@ -1809,10 +1826,13 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
                 ui.label(texts.position_dimensions_heading());
                 ui.label(format!(
                     "x {}, y {}, {} x {}",
-                    details.placed_piece.rect.x,
-                    details.placed_piece.rect.y,
-                    details.placed_piece.rect.width,
-                    details.placed_piece.rect.length
+                    format_length(details.placed_piece.rect.x, state.project.settings.unit),
+                    format_length(details.placed_piece.rect.y, state.project.settings.unit),
+                    format_length(details.placed_piece.rect.width, state.project.settings.unit),
+                    format_length(
+                        details.placed_piece.rect.length,
+                        state.project.settings.unit
+                    )
                 ));
                 ui.end_row();
 
@@ -1997,7 +2017,11 @@ fn import_csv_from_state_path(state: &mut FreecutAppState) {
         return;
     }
 
-    match import_project_csv_file(path, next_piece_id(&state.project).0) {
+    match import_project_csv_file(
+        path,
+        next_piece_id(&state.project).0,
+        state.project.settings.unit,
+    ) {
         Ok(result) => apply_csv_import_result(state, result),
         Err(error) => {
             let message = texts.csv_import_read_failed_message(error);
@@ -2072,8 +2096,10 @@ fn add_default_stock_piece(state: &mut FreecutAppState) {
     let id = next_piece_id(&state.project);
     state.project.stock_pieces.push(StockPiece {
         id,
-        width: 2440,
-        length: 1220,
+        width: length_from_whole_units(2440, Unit::Millimeter)
+            .expect("default stock width fits geometry coordinates"),
+        length: length_from_whole_units(1220, Unit::Millimeter)
+            .expect("default stock length fits geometry coordinates"),
         quantity: Some(1),
         pattern: PatternDirection::None,
     });
@@ -2086,8 +2112,10 @@ fn add_default_cut_piece(state: &mut FreecutAppState) {
     state.project.cut_pieces.push(CutPiece {
         id,
         label: format!("cut-{}", id.0),
-        width: 100,
-        length: 100,
+        width: length_from_whole_units(100, Unit::Millimeter)
+            .expect("default cut width fits geometry coordinates"),
+        length: length_from_whole_units(100, Unit::Millimeter)
+            .expect("default cut length fits geometry coordinates"),
         quantity: 1,
         pattern: PatternDirection::None,
         can_rotate: true,
@@ -2159,10 +2187,32 @@ fn next_piece_id(project: &Project) -> PieceId {
     PieceId(max_stock_id.max(max_cut_id) + 1)
 }
 
-fn dimension_drag_value(value: &mut u32) -> egui::DragValue<'_> {
-    egui::DragValue::new(value)
-        .speed(1.0)
-        .range(0..=MAX_DIMENSION)
+fn dimension_drag_value(value: &mut u32, unit: Unit) -> egui::DragValue<'_> {
+    let maximum = length_as_f64(u32::MAX, unit);
+    let speed = match unit {
+        Unit::Millimeter => 0.1,
+        Unit::Inch | Unit::Foot => 0.01,
+    };
+
+    egui::DragValue::from_get_set(move |new_value| {
+        if let Some(new_value) = new_value.and_then(|value| length_from_f64(value, unit)) {
+            *value = new_value;
+        }
+        length_as_f64(*value, unit)
+    })
+    .speed(speed)
+    .range(0.0..=maximum)
+    .custom_formatter(move |display_value, _range| {
+        length_from_f64(display_value, unit).map_or_else(
+            || display_value.to_string(),
+            |value| format_length(value, unit),
+        )
+    })
+    .custom_parser(move |source| {
+        parse_length(source, unit)
+            .ok()
+            .map(|value| length_as_f64(value, unit))
+    })
 }
 
 fn quantity_drag_value(value: &mut u32) -> egui::DragValue<'_> {
@@ -2451,7 +2501,8 @@ fn empty_project() -> Project {
         cut_pieces: Vec::new(),
         settings: CutSettings {
             unit: Unit::Millimeter,
-            kerf_width: 3,
+            kerf_width: length_from_whole_units(3, Unit::Millimeter)
+                .expect("default kerf fits geometry coordinates"),
             layout: LayoutKind::Guillotine,
         },
     }
@@ -2547,7 +2598,10 @@ mod tests {
         assert!(state.project.stock_pieces.is_empty());
         assert!(state.project.cut_pieces.is_empty());
         assert_eq!(state.project.settings.layout, LayoutKind::Guillotine);
-        assert_eq!(state.project.settings.kerf_width, 3);
+        assert_eq!(
+            state.project.settings.kerf_width,
+            length_from_whole_units(3, Unit::Millimeter).expect("default kerf fits")
+        );
         assert_eq!(state.optimizer_effort, OptimizerEffort::Fast);
         assert_eq!(state.font_size, UiFontSize::Normal);
         assert_eq!(state.language, UiLanguage::English);
@@ -3034,7 +3088,11 @@ mod tests {
 valid,10,20,1\n\
 broken,0,20,1\n\
 valid2,30,40,2\n";
-        let result = crate::import::import_project_csv(csv, next_piece_id(&state.project).0);
+        let result = crate::import::import_project_csv(
+            csv,
+            next_piece_id(&state.project).0,
+            state.project.settings.unit,
+        );
 
         apply_csv_import_result(&mut state, result);
 
@@ -3089,7 +3147,11 @@ valid2,30,40,2\n";
         let csv = "label,width,length,quantity\n\
 valid,10,20,1\n\
 broken,0,20,1\n";
-        let result = crate::import::import_project_csv(csv, next_piece_id(&state.project).0);
+        let result = crate::import::import_project_csv(
+            csv,
+            next_piece_id(&state.project).0,
+            state.project.settings.unit,
+        );
 
         apply_csv_import_result(&mut state, result);
 
@@ -3202,7 +3264,12 @@ broken,0,20,1\n";
         std::fs::remove_file(path).expect("remove exported pdf fixture");
         let text = String::from_utf8_lossy(&bytes);
         assert!(bytes.starts_with(b"%PDF-1.4"));
-        assert!(text.contains("Size 2440 x 1220 foot"));
+        let stock = &state.project.stock_pieces[0];
+        assert!(text.contains(&format!(
+            "Size {} x {} foot",
+            format_length(stock.width, Unit::Foot),
+            format_length(stock.length, Unit::Foot)
+        )));
         assert!(text.contains(r"Width \(foot\)"));
         assert!(state.error_message.is_none());
         assert!(state

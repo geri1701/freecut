@@ -5,7 +5,10 @@
 
 use std::{collections::HashMap, fs, io, path::Path};
 
-use crate::domain::{CutPiece, PatternDirection, PieceId, StockPiece};
+use crate::{
+    domain::{CutPiece, PatternDirection, PieceId, StockPiece, Unit},
+    measurement::parse_length,
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CsvImportResult {
@@ -36,13 +39,14 @@ pub struct CsvImportError {
 pub fn import_project_csv_file(
     path: impl AsRef<Path>,
     first_piece_id: u64,
+    unit: Unit,
 ) -> io::Result<CsvImportResult> {
     let source = fs::read_to_string(path)?;
-    Ok(import_project_csv(&source, first_piece_id))
+    Ok(import_project_csv(&source, first_piece_id, unit))
 }
 
 #[must_use]
-pub fn import_project_csv(source: &str, first_piece_id: u64) -> CsvImportResult {
+pub fn import_project_csv(source: &str, first_piece_id: u64, unit: Unit) -> CsvImportResult {
     let mut result = CsvImportResult::default();
     let mut next_id = first_piece_id;
     let Some((header_line, header)) = first_record(source, &mut result.errors) else {
@@ -72,7 +76,7 @@ pub fn import_project_csv(source: &str, first_piece_id: u64) -> CsvImportResult 
             continue;
         }
 
-        match csv_piece_from_record(line, &record, &header, next_id) {
+        match csv_piece_from_record(line, &record, &header, next_id, unit) {
             Ok(CsvPiece::Cut(cut)) => {
                 next_id += 1;
                 result.cut_pieces.push(cut);
@@ -192,12 +196,13 @@ fn csv_piece_from_record(
     record: &[String],
     header: &CsvHeader,
     id: u64,
+    unit: Unit,
 ) -> Result<CsvPiece, CsvImportError> {
     let piece_type = parse_piece_type(optional_cell(record, header.piece_type).unwrap_or_default())
         .map_err(|message| CsvImportError { line, message })?;
-    let width = parse_positive_u32(cell(record, header.width, line)?, "width")
+    let width = parse_positive_length(cell(record, header.width, line)?, "width", unit)
         .map_err(|message| CsvImportError { line, message })?;
-    let length = parse_positive_u32(cell(record, header.length, line)?, "length")
+    let length = parse_positive_length(cell(record, header.length, line)?, "length", unit)
         .map_err(|message| CsvImportError { line, message })?;
     let quantity = parse_positive_u32(cell(record, header.quantity, line)?, "quantity")
         .map_err(|message| CsvImportError { line, message })?;
@@ -265,6 +270,17 @@ fn parse_positive_u32(value: &str, field: &str) -> Result<u32, String> {
     let parsed = value
         .parse::<u32>()
         .map_err(|_parse_error| format!("{field} muss eine positive ganze Zahl sein"))?;
+
+    if parsed == 0 {
+        return Err(format!("{field} muss größer als 0 sein"));
+    }
+
+    Ok(parsed)
+}
+
+fn parse_positive_length(value: &str, field: &str, unit: Unit) -> Result<u32, String> {
+    let parsed = parse_length(value, unit)
+        .map_err(|error| format!("{field} ist kein gültiges positives Maß: {error}"))?;
 
     if parsed == 0 {
         return Err(format!("{field} muss größer als 0 sein"));
@@ -396,6 +412,7 @@ fn parse_csv_line(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::measurement::length_from_whole_units;
 
     #[test]
     fn imports_cut_rows_with_required_and_optional_fields() {
@@ -403,15 +420,21 @@ mod tests {
 side,700,500,2,width,false\n\
 shelf,600,300,4,none,true\n";
 
-        let result = import_project_csv(source, 10);
+        let result = import_project_csv(source, 10, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert!(result.stock_pieces.is_empty());
         assert_eq!(result.cut_pieces.len(), 2);
         assert_eq!(result.cut_pieces[0].id, PieceId(10));
         assert_eq!(result.cut_pieces[0].label, "side");
-        assert_eq!(result.cut_pieces[0].width, 700);
-        assert_eq!(result.cut_pieces[0].length, 500);
+        assert_eq!(
+            result.cut_pieces[0].width,
+            length_from_whole_units(700, Unit::Millimeter).expect("fixture fits")
+        );
+        assert_eq!(
+            result.cut_pieces[0].length,
+            length_from_whole_units(500, Unit::Millimeter).expect("fixture fits")
+        );
         assert_eq!(result.cut_pieces[0].quantity, 2);
         assert_eq!(
             result.cut_pieces[0].pattern,
@@ -427,7 +450,7 @@ shelf,600,300,4,none,true\n";
         let source = "name,width,length,amount,pattern,piece_type\n\
 birch,2440,1220,3,length,stock\n";
 
-        let result = import_project_csv(source, 1);
+        let result = import_project_csv(source, 1, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert!(result.cut_pieces.is_empty());
@@ -446,7 +469,7 @@ valid,10,20,1\n\
 broken,0,20,1\n\
 valid2,30,40,2\n";
 
-        let result = import_project_csv(source, 5);
+        let result = import_project_csv(source, 5, Unit::Millimeter);
 
         assert_eq!(result.cut_pieces.len(), 2);
         assert_eq!(result.cut_pieces[0].id, PieceId(5));
@@ -460,7 +483,7 @@ valid2,30,40,2\n";
     fn reports_missing_required_header() {
         let source = "label,width,quantity\npart,10,1\n";
 
-        let result = import_project_csv(source, 1);
+        let result = import_project_csv(source, 1, Unit::Millimeter);
 
         assert_eq!(result.imported_count(), 0);
         assert_eq!(result.errors.len(), 1);
@@ -472,9 +495,30 @@ valid2,30,40,2\n";
     fn parses_quoted_commas_and_escaped_quotes() {
         let source = "label,width,length,quantity\n\"left, \"\"pretty\"\" side\",10,20,1\n";
 
-        let result = import_project_csv(source, 1);
+        let result = import_project_csv(source, 1, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert_eq!(result.cut_pieces[0].label, "left, \"pretty\" side");
+    }
+
+    #[test]
+    fn imports_decimal_and_fractional_dimensions_in_the_project_unit() {
+        let source = "label,width,length,quantity\nside,12 1/8,3.5,1\nmetric,\"3,175\",2,1\n";
+
+        let result = import_project_csv(source, 1, Unit::Inch);
+
+        assert_eq!(result.errors, Vec::new());
+        assert_eq!(
+            result.cut_pieces[0].width,
+            parse_length("12 1/8", Unit::Inch).expect("fixture parses")
+        );
+        assert_eq!(
+            result.cut_pieces[0].length,
+            parse_length("3.5", Unit::Inch).expect("fixture parses")
+        );
+        assert_eq!(
+            result.cut_pieces[1].width,
+            parse_length("3.175", Unit::Inch).expect("fixture parses")
+        );
     }
 }

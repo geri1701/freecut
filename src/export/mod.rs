@@ -6,6 +6,7 @@
 use std::{fmt, fmt::Write as _, fs, io, path::Path};
 
 use crate::domain::{LayoutKind, Unit};
+use crate::measurement::format_length;
 use crate::render::{
     solution_sheet_kerf_geometries, CutKerfGeometry, CutKerfLine, PlacedPiece, Rect, Solution,
     SolutionSheet,
@@ -210,16 +211,16 @@ fn sheet_layout_page_content(
     let subtitle = match fitness {
         Some(fitness) => format!(
             "Size {} x {} {} - {} cut(s) - fitness {:.3}",
-            sheet.width,
-            sheet.length,
+            format_length(sheet.width, unit),
+            format_length(sheet.length, unit),
             unit_label(unit),
             sheet.placed_pieces.len(),
             fitness
         ),
         None => format!(
             "Size {} x {} {} - {} cut(s)",
-            sheet.width,
-            sheet.length,
+            format_length(sheet.width, unit),
+            format_length(sheet.length, unit),
             unit_label(unit),
             sheet.placed_pieces.len()
         ),
@@ -405,7 +406,7 @@ fn cut_list_page_content(
     for (index, piece) in pieces.iter().enumerate() {
         let row_index = f64::from(u16::try_from(index).expect("cut list row index fits in u16"));
         let row_top_y = TABLE_TOP_Y - TABLE_ROW_HEIGHT * (row_index + 1.0);
-        add_cut_list_table_row(&mut content, row_top_y, piece, index % 2 == 1);
+        add_cut_list_table_row(&mut content, row_top_y, piece, index % 2 == 1, unit);
     }
 
     content
@@ -450,7 +451,13 @@ fn add_cut_list_table_header(content: &mut String, unit: Unit) {
     );
 }
 
-fn add_cut_list_table_row(content: &mut String, row_top_y: f64, piece: &PlacedPiece, shaded: bool) {
+fn add_cut_list_table_row(
+    content: &mut String,
+    row_top_y: f64,
+    piece: &PlacedPiece,
+    shaded: bool,
+    unit: Unit,
+) {
     let fill = if shaded {
         (0.96, 0.97, 0.98)
     } else {
@@ -471,10 +478,10 @@ fn add_cut_list_table_row(content: &mut String, row_top_y: f64, piece: &PlacedPi
 
     let values = [
         piece_label(piece),
-        piece.rect.x.to_string(),
-        piece.rect.y.to_string(),
-        piece.rect.width.to_string(),
-        piece.rect.length.to_string(),
+        format_length(piece.rect.x, unit),
+        format_length(piece.rect.y, unit),
+        format_length(piece.rect.width, unit),
+        format_length(piece.rect.length, unit),
         if piece.rotated { "rotated" } else { "fixed" }.to_string(),
         pattern_label(piece.pattern).to_string(),
     ];
@@ -794,7 +801,11 @@ mod tests {
 
     #[test]
     fn pdf_export_labels_dimensions_with_selected_unit() {
-        let solution = sample_solution();
+        let mut solution = sample_solution();
+        solution.sheets[0].width =
+            crate::measurement::length_from_whole_units(100, Unit::Inch).expect("fixture fits");
+        solution.sheets[0].length =
+            crate::measurement::length_from_whole_units(80, Unit::Inch).expect("fixture fits");
 
         let pdf = export_solution_pdf_bytes(&solution, Unit::Inch);
         let text = String::from_utf8_lossy(&pdf);
