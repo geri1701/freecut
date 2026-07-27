@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "project": {
+    "name": "d761024f-pass (stock by width DESC, length DESC)",
+    "stock_pieces": [
+      { "id": 101, "width": 1500, "length": 4000, "quantity": 1, "pattern": "None" },
+      { "id": 102, "width": 1500, "length": 3500, "quantity": 1, "pattern": "None" },
+      { "id": 103, "width": 1250, "length": 5000, "quantity": 2, "pattern": "None" }
+    ],
+    "cut_pieces": [
+      { "id": 1,  "label": "1117488_1",  "width": 551, "length": 2210, "quantity": 3, "pattern": "None", "can_rotate": true },
+      { "id": 2,  "label": "1117491_2",  "width": 500, "length": 993,  "quantity": 2, "pattern": "None", "can_rotate": true },
+      { "id": 3,  "label": "1117492_3",  "width": 700, "length": 1003, "quantity": 2, "pattern": "None", "can_rotate": true },
+      { "id": 4,  "label": "1117493_4",  "width": 750, "length": 2026, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 5,  "label": "1117494_5",  "width": 500, "length": 863,  "quantity": 2, "pattern": "None", "can_rotate": true },
+      { "id": 6,  "label": "1117495_6",  "width": 700, "length": 942,  "quantity": 2, "pattern": "None", "can_rotate": true },
+      { "id": 7,  "label": "1117496_7",  "width": 551, "length": 2089, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 8,  "label": "1117497_8",  "width": 751, "length": 1662, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 9,  "label": "1117498_9",  "width": 751, "length": 1781, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 10, "label": "1117499_10", "width": 551, "length": 1321, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 11, "label": "1117500_11", "width": 551, "length": 1262, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 12, "label": "1117501_12", "width": 551, "length": 2147, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 13, "label": "1117502_13", "width": 750, "length": 1901, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 14, "label": "1117503_14", "width": 750, "length": 2026, "quantity": 1, "pattern": "None", "can_rotate": true },
+      { "id": 15, "label": "1117504_15", "width": 550, "length": 1884, "quantity": 1, "pattern": "None", "can_rotate": true }
+    ],
+    "settings": {
+      "unit": "Millimeter",
+      "kerf_width": 0,
+      "layout": "Guillotine"
+    }
+  },
+  "optimizer_effort": "Thorough"
+}

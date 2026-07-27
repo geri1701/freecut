@@ -3,6 +3,7 @@ use freecut::{
         CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
     },
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
+    project_io::{load_project_document_from_str, PROJECT_FILE_VERSION},
     render::Rect,
 };
 
@@ -151,20 +152,19 @@ fn thorough_guillotine_places_q71_side_strip_case() {
 
 #[test]
 fn guillotine_thorough_is_independent_of_stock_input_order_for_issue_35() {
-    let width_descending_stock = issue_35_project(vec![
-        stock(101, 1500, 4000, 1),
-        stock(102, 1500, 3500, 1),
-        stock(103, 1250, 5000, 2),
-    ]);
-    let reported_failing_stock_order = issue_35_project(vec![
-        stock(101, 1500, 3500, 1),
-        stock(102, 1250, 5000, 2),
-        stock(103, 1500, 4000, 1),
-    ]);
+    for source in [
+        include_str!("fixtures/issue-35-pass-v1.freecut.json"),
+        include_str!("fixtures/issue-35-fail-v1.freecut.json"),
+    ] {
+        let document = load_project_document_from_str(source).expect("issue #35 fixture loads");
+        assert_eq!(document.version, PROJECT_FILE_VERSION);
+        assert_eq!(document.optimizer_effort, OptimizerEffort::Thorough);
 
-    for project in [width_descending_stock, reported_failing_stock_order] {
         let solution = BaselineOptimizer
-            .optimize_with_config(&project, OptimizerConfig::new(OptimizerEffort::Thorough))
+            .optimize_with_config(
+                &document.project,
+                OptimizerConfig::new(document.optimizer_effort),
+            )
             .expect("issue #35 stock ordering should not decide whether a solution exists");
 
         assert_eq!(solution.sheets.len(), 4);
@@ -396,45 +396,6 @@ fn rotation_disabled_regression_project(layout: LayoutKind, disabled_cut_id: u64
             kerf_width: 2,
             layout,
         },
-    }
-}
-
-fn issue_35_project(stock_pieces: Vec<StockPiece>) -> Project {
-    Project {
-        name: "issue-35-stock-order".to_string(),
-        stock_pieces,
-        cut_pieces: vec![
-            cut(1, 551, 2210, 3, true),
-            cut(2, 500, 993, 2, true),
-            cut(3, 700, 1003, 2, true),
-            cut(4, 750, 2026, 1, true),
-            cut(5, 500, 863, 2, true),
-            cut(6, 700, 942, 2, true),
-            cut(7, 551, 2089, 1, true),
-            cut(8, 751, 1662, 1, true),
-            cut(9, 751, 1781, 1, true),
-            cut(10, 551, 1321, 1, true),
-            cut(11, 551, 1262, 1, true),
-            cut(12, 551, 2147, 1, true),
-            cut(13, 750, 1901, 1, true),
-            cut(14, 750, 2026, 1, true),
-            cut(15, 550, 1884, 1, true),
-        ],
-        settings: CutSettings {
-            unit: Unit::Millimeter,
-            kerf_width: 0,
-            layout: LayoutKind::Guillotine,
-        },
-    }
-}
-
-fn stock(id: u64, width: u32, length: u32, quantity: u32) -> StockPiece {
-    StockPiece {
-        id: PieceId(id),
-        width,
-        length,
-        quantity: Some(quantity),
-        pattern: PatternDirection::None,
     }
 }
 
