@@ -12,3 +12,17 @@ publish = false
 eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[package.metadata.deb]
+name = "freecut"
+section = "graphics"
+priority = "optional"
+extended-description = "Freecut is a cut optimizer for editable rectangular panel layouts."
+depends = "$auto, libxkbcommon0, libxkbcommon-x11-0, libgl1, libegl1, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libx11-xcb1, libxcursor1, libxi6, libxrandr2"
+recommends = "xdg-desktop-portal"
+assets = [
+    ["target/release/freecut", "usr/bin/", "755"],
+    ["packaging/linux/freecut.desktop", "usr/share/applications/", "644"],
+    ["packaging/icons/freecut-512.png", "usr/share/icons/hicolor/512x512/apps/freecut.png", "644"],
+    ["README.md", "usr/share/doc/freecut/README", "644"],
+]

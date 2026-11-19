@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Freecut
+GenericName=Cut Optimizer
+Comment=Free and open source cut optimizer for editable rectangular panel layouts
+Exec=freecut
+Icon=freecut
+Terminal=false
+Categories=Graphics;Science;Engineering;
+Keywords=cut;panel;optimizer;woodworking;
