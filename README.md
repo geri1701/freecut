@@ -30,7 +30,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 - Deterministic optimizer behavior
 - Interactive graphical solution preview
 - Red kerf/gap visualization in the GUI and PDF export
-- PDF export with sheet drawings and cut lists
+- PDF export with sheet drawings, cut lists, and part labels
 - CSV import for stock and cut lists
 - Project save/load support
 - Native file dialogs for project files, CSV import, and PDF export

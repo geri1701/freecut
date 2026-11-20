@@ -3,9 +3,9 @@
 //! The first export target is a small dependency-free PDF writer. It consumes only
 //! the shared render model so GUI preview and file export stay aligned.
 
-use std::{fmt, fmt::Write as _, fs, io, path::Path};
+use std::{collections::HashMap, fmt, fmt::Write as _, fs, io, path::Path};
 
-use crate::domain::{LayoutKind, Unit};
+use crate::domain::{CutPiece, LayoutKind, PieceId, Unit};
 use crate::measurement::format_length;
 use crate::render::{
     solution_sheet_kerf_geometries, CutKerfGeometry, CutKerfLine, PlacedPiece, Rect, Solution,
@@ -61,8 +61,33 @@ pub fn export_solution_pdf_file(
     Ok(())
 }
 
+pub(crate) fn export_solution_pdf_file_with_labels(
+    path: impl AsRef<Path>,
+    solution: &Solution,
+    unit: Unit,
+    cut_pieces: &[CutPiece],
+) -> Result<(), PdfExportError> {
+    fs::write(
+        path,
+        export_solution_pdf_bytes_with_labels(solution, unit, cut_pieces),
+    )?;
+    Ok(())
+}
+
 #[must_use]
 pub fn export_solution_pdf_bytes(solution: &Solution, unit: Unit) -> Vec<u8> {
+    export_solution_pdf_bytes_with_labels(solution, unit, &[])
+}
+
+fn export_solution_pdf_bytes_with_labels(
+    solution: &Solution,
+    unit: Unit,
+    cut_pieces: &[CutPiece],
+) -> Vec<u8> {
+    let cut_labels = cut_pieces
+        .iter()
+        .map(|piece| (piece.id, piece.label.as_str()))
+        .collect::<HashMap<PieceId, _>>();
     let page_contents = if solution.sheets.is_empty() {
         vec![empty_solution_page_content()]
     } else {
@@ -71,7 +96,14 @@ pub fn export_solution_pdf_bytes(solution: &Solution, unit: Unit) -> Vec<u8> {
             .iter()
             .enumerate()
             .flat_map(|(index, sheet)| {
-                sheet_page_contents(index, sheet, solution.layout, solution.fitness, unit)
+                sheet_page_contents(
+                    index,
+                    sheet,
+                    solution.layout,
+                    solution.fitness,
+                    unit,
+                    &cut_labels,
+                )
             })
             .collect()
     };
@@ -167,18 +199,26 @@ fn sheet_page_contents(
     layout: LayoutKind,
     fitness: Option<f64>,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
 ) -> Vec<String> {
     let mut pages = vec![sheet_layout_page_content(
-        index, sheet, layout, fitness, unit,
+        index, sheet, layout, fitness, unit, cut_labels,
     )];
 
     let piece_refs = sheet.placed_pieces.iter().collect::<Vec<_>>();
     if piece_refs.is_empty() {
-        pages.push(cut_list_page_content(index, 0, sheet, &[], unit));
+        pages.push(cut_list_page_content(
+            index,
+            0,
+            sheet,
+            &[],
+            unit,
+            cut_labels,
+        ));
     } else {
         for (page_index, pieces) in piece_refs.chunks(CUT_LIST_ROWS_PER_PAGE).enumerate() {
             pages.push(cut_list_page_content(
-                index, page_index, sheet, pieces, unit,
+                index, page_index, sheet, pieces, unit, cut_labels,
             ));
         }
     }
@@ -192,6 +232,7 @@ fn sheet_layout_page_content(
     layout: LayoutKind,
     fitness: Option<f64>,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
 ) -> String {
     let mut content = String::new();
     let title = format!(
@@ -254,7 +295,7 @@ fn sheet_layout_page_content(
         }
 
         for piece in &sheet.placed_pieces {
-            add_piece(&mut content, &transform, piece);
+            add_piece(&mut content, &transform, piece, cut_labels);
         }
 
         add_kerf_geometries(&mut content, &transform, sheet, layout);
@@ -283,7 +324,12 @@ fn sheet_layout_page_content(
     content
 }
 
-fn add_piece(content: &mut String, transform: &SheetPdfTransform, piece: &PlacedPiece) {
+fn add_piece(
+    content: &mut String,
+    transform: &SheetPdfTransform,
+    piece: &PlacedPiece,
+    cut_labels: &HashMap<PieceId, &str>,
+) {
     let rect = transform.rect_to_pdf(piece.rect);
     let fill = if piece.rotated {
         (0.70, 0.86, 1.0)
@@ -293,15 +339,124 @@ fn add_piece(content: &mut String, transform: &SheetPdfTransform, piece: &Placed
     add_filled_rect(content, rect, fill, None, 0.0);
 
     if rect.width >= 24.0 && rect.height >= 10.0 {
-        add_text(
-            content,
-            7.0,
-            rect.x + 3.0,
-            rect.y + rect.height / 2.0 - 2.5,
-            &piece_label(piece),
-            false,
-        );
+        let label = cut_labels
+            .get(&piece.cut_id)
+            .filter(|label| !label.trim().is_empty())
+            .map_or_else(
+                || piece_label(piece, cut_labels),
+                |label| (*label).to_string(),
+            );
+        let label_font_size = 7.0;
+        let label_lines =
+            wrap_graphic_label(&label, rect.width - 6.0, rect.height - 2.0, label_font_size);
+        if !label_lines.is_empty() {
+            let _ = writeln!(
+                content,
+                "q {:.2} {:.2} {:.2} {:.2} re W n",
+                rect.x + 3.0,
+                rect.y + 1.0,
+                rect.width - 6.0,
+                rect.height - 2.0
+            );
+            let line_height = label_font_size + 1.0;
+            let mut line_span = 0.0;
+            for _ in label_lines.iter().skip(1) {
+                line_span += line_height;
+            }
+            let mut baseline = rect.y + rect.height / 2.0 - 2.5 + line_span / 2.0;
+            for line in label_lines {
+                add_text(
+                    content,
+                    label_font_size,
+                    rect.x + 3.0,
+                    baseline,
+                    &line,
+                    false,
+                );
+                baseline -= line_height;
+            }
+            content.push_str("Q\n");
+        }
     }
+}
+
+fn wrap_graphic_label(
+    label: &str,
+    available_width: f64,
+    available_height: f64,
+    font_size: f64,
+) -> Vec<String> {
+    let character_width = font_size * 0.6;
+    let mut max_characters_per_line = 0;
+    let mut line_width = 0.0;
+    while line_width + character_width <= available_width {
+        max_characters_per_line += 1;
+        line_width += character_width;
+    }
+
+    let line_height = font_size + 1.0;
+    let mut max_lines = 0;
+    let mut text_height = 0.0;
+    while text_height + line_height <= available_height {
+        max_lines += 1;
+        text_height += line_height;
+    }
+    if max_characters_per_line == 0 || max_lines == 0 {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    for word in label.split_whitespace() {
+        let word_length = word.chars().count();
+        let current_length = current_line.chars().count();
+        if !current_line.is_empty() && current_length + 1 + word_length <= max_characters_per_line {
+            current_line.push(' ');
+            current_line.push_str(word);
+            continue;
+        }
+
+        if !current_line.is_empty() {
+            lines.push(std::mem::take(&mut current_line));
+        }
+
+        let word_characters = word.chars().collect::<Vec<_>>();
+        let mut chunk = String::new();
+        let mut word_offset = 0;
+        while word_offset < word_characters.len() {
+            let remaining = word_characters.len() - word_offset;
+            let mut chunk_length = remaining.min(max_characters_per_line);
+            if max_characters_per_line > 1
+                && remaining > max_characters_per_line
+                && remaining - max_characters_per_line == 1
+            {
+                chunk_length -= 1;
+            }
+            for character in &word_characters[word_offset..word_offset + chunk_length] {
+                chunk.push(*character);
+            }
+            word_offset += chunk_length;
+            if word_offset < word_characters.len() {
+                lines.push(std::mem::take(&mut chunk));
+            }
+        }
+        current_line = chunk;
+    }
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
+        let ellipsis = ".".repeat((max_characters_per_line / 3).clamp(1, 3));
+        let last_line = lines.last_mut().expect("truncated lines are non-empty");
+        while last_line.chars().count() + ellipsis.len() > max_characters_per_line {
+            last_line.pop();
+        }
+        last_line.push_str(&ellipsis);
+    }
+
+    lines
 }
 
 fn sheet_base_fill(sheet: &SolutionSheet, layout: LayoutKind) -> (f64, f64, f64) {
@@ -355,6 +510,7 @@ fn cut_list_page_content(
     sheet: &SolutionSheet,
     pieces: &[&PlacedPiece],
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
 ) -> String {
     let mut content = String::new();
     let page_count = sheet
@@ -406,7 +562,14 @@ fn cut_list_page_content(
     for (index, piece) in pieces.iter().enumerate() {
         let row_index = f64::from(u16::try_from(index).expect("cut list row index fits in u16"));
         let row_top_y = TABLE_TOP_Y - TABLE_ROW_HEIGHT * (row_index + 1.0);
-        add_cut_list_table_row(&mut content, row_top_y, piece, index % 2 == 1, unit);
+        add_cut_list_table_row(
+            &mut content,
+            row_top_y,
+            piece,
+            index % 2 == 1,
+            unit,
+            cut_labels,
+        );
     }
 
     content
@@ -457,6 +620,7 @@ fn add_cut_list_table_row(
     piece: &PlacedPiece,
     shaded: bool,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
 ) {
     let fill = if shaded {
         (0.96, 0.97, 0.98)
@@ -477,7 +641,7 @@ fn add_cut_list_table_row(
     );
 
     let values = [
-        piece_label(piece),
+        piece_label(piece, cut_labels),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
         format_length(piece.rect.width, unit),
@@ -514,7 +678,7 @@ struct CutListColumn {
 impl CutListColumn {
     const ALL: [Self; 7] = [
         Self {
-            label: "Cut",
+            label: "Part",
             x: TABLE_X,
         },
         Self {
@@ -754,8 +918,14 @@ fn add_text(content: &mut String, size: f64, x: f64, y: f64, text: &str, bold_hi
     );
 }
 
-fn piece_label(piece: &PlacedPiece) -> String {
-    format!("Cut #{}-{}", piece.cut_id.0, piece.instance + 1)
+fn piece_label(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
+    let cut_instance = format!("Cut #{}-{}", piece.cut_id.0, piece.instance + 1);
+    cut_labels
+        .get(&piece.cut_id)
+        .filter(|label| !label.trim().is_empty())
+        .map_or(cut_instance.clone(), |label| {
+            format!("{label} ({cut_instance})")
+        })
 }
 
 fn escape_pdf_text(text: &str) -> String {
@@ -779,7 +949,7 @@ fn escape_pdf_text(text: &str) -> String {
 mod tests {
     use super::*;
     use crate::{
-        domain::{LayoutKind, PatternDirection, PieceId},
+        domain::{CutPiece, LayoutKind, PatternDirection, PieceId},
         render::{Cut, CutOrientation, LeafKind, SliceNode},
     };
 
@@ -797,6 +967,37 @@ mod tests {
         assert!(text.contains("Cut #7-1"));
         assert!(text.contains("xref"));
         assert!(text.contains("%%EOF"));
+    }
+
+    #[test]
+    fn pdf_export_includes_part_labels_in_the_graphic_and_cut_list() {
+        let solution = sample_solution();
+        let cut_pieces = [CutPiece {
+            id: PieceId(7),
+            label: "Side panel".to_string(),
+            width: 30,
+            length: 40,
+            quantity: 1,
+            pattern: PatternDirection::None,
+            can_rotate: false,
+        }];
+
+        let pdf = export_solution_pdf_bytes_with_labels(&solution, Unit::Millimeter, &cut_pieces);
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert_eq!(text.matches("Side panel").count(), 2);
+        assert!(text.contains(r"Side panel \(Cut #7-1\)"));
+        assert!(text.contains("re W n"));
+    }
+
+    #[test]
+    fn graphic_part_labels_wrap_and_truncate_to_fit_piece_bounds() {
+        let wrapped = wrap_graphic_label("Side panel", 18.0, 26.0, 7.0);
+        assert_eq!(wrapped, ["Side", "pan", "el"]);
+
+        let truncated = wrap_graphic_label("Very long part label", 18.0, 8.0, 7.0);
+        assert_eq!(truncated, ["Ver."]);
+        assert!(truncated.iter().all(|line| line.chars().count() <= 4));
     }
 
     #[test]

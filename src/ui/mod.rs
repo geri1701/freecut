@@ -12,7 +12,7 @@ use crate::{
     domain::{
         CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
     },
-    export::export_solution_pdf_file,
+    export::export_solution_pdf_file_with_labels,
     import::{import_project_csv_file, CsvImportResult},
     measurement::{
         format_length, length_as_f64, length_from_f64, length_from_whole_units, parse_length,
@@ -2052,7 +2052,12 @@ fn export_solution_from_state_path(state: &mut FreecutAppState) {
         return;
     };
 
-    match export_solution_pdf_file(path, solution, state.project.settings.unit) {
+    match export_solution_pdf_file_with_labels(
+        path,
+        solution,
+        state.project.settings.unit,
+        &state.project.cut_pieces,
+    ) {
         Ok(()) => {
             let message = texts.pdf_exported_message(path);
             state.export_report = Some(message);
