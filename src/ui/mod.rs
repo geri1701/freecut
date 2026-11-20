@@ -1373,12 +1373,12 @@ impl FreecutApp {
 
                         if let Some(piece_index) = draw_solution_sheet(
                             ui,
-                            sheet,
                             selected,
                             highlighted_cut_id,
                             sheet_view_max_height,
                             texts,
                             SolutionGraphicContext {
+                                sheet,
                                 layout: solution.layout,
                                 cut_labels: &cut_labels,
                             },
@@ -1449,19 +1449,20 @@ struct SheetViewBounds {
 
 #[derive(Clone, Copy)]
 struct SolutionGraphicContext<'a> {
+    sheet: &'a SolutionSheet,
     layout: LayoutKind,
     cut_labels: &'a HashMap<PieceId, &'a str>,
 }
 
 fn draw_solution_sheet(
     ui: &mut egui::Ui,
-    sheet: &SolutionSheet,
     selected: bool,
     highlighted_cut_id: Option<PieceId>,
     max_height: f32,
     texts: UiTexts,
     context: SolutionGraphicContext<'_>,
 ) -> Option<usize> {
+    let sheet = context.sheet;
     let Some(bounds) = sheet_view_bounds(sheet, ui.available_width(), max_height) else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -1502,7 +1503,7 @@ fn draw_solution_sheet(
             bounds.scale,
             highlighted_cut_id == Some(piece.cut_id),
             draw_piece_boundaries,
-            context.cut_labels,
+            context,
         );
     }
 
@@ -1553,7 +1554,7 @@ fn draw_placed_piece(
     scale: f32,
     highlighted: bool,
     draw_boundary: bool,
-    cut_labels: &HashMap<PieceId, &str>,
+    context: SolutionGraphicContext<'_>,
 ) {
     let piece_rect = solution_rect_to_screen_rect(piece.rect, sheet_rect, scale);
     painter.rect_filled(piece_rect, 0.0, piece_fill_color(piece, highlighted));
@@ -1570,7 +1571,11 @@ fn draw_placed_piece(
         );
     }
     let clipped_painter = painter.with_clip_rect(piece_rect);
-    for label in piece_graphic_labels(piece, cut_labels.get(&piece.cut_id).copied()) {
+    for label in piece_graphic_labels(
+        context.sheet,
+        piece,
+        context.cut_labels.get(&piece.cut_id).copied(),
+    ) {
         clipped_painter.text(
             egui::pos2(
                 piece_rect.left() + graphic_label_screen_value(label.x, scale),
@@ -1578,7 +1583,7 @@ fn draw_placed_piece(
             ),
             egui::Align2::LEFT_TOP,
             label.text,
-            egui::FontId::monospace(graphic_label_screen_value(label.font_size, scale)),
+            egui::FontId::proportional(graphic_label_screen_value(label.font_size, scale)),
             PIECE_LABEL_COLOR,
         );
     }

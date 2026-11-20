@@ -38,6 +38,8 @@ pub struct PieceGraphicLabel {
     pub font_size: f64,
 }
 
+const SHEET_GRAPHIC_FONT_SIZE_RATIO: f64 = 0.0175;
+
 impl PlacedPiece {
     #[must_use]
     pub fn cut_instance_label(&self) -> String {
@@ -47,12 +49,14 @@ impl PlacedPiece {
 
 #[must_use]
 pub fn piece_graphic_labels(
+    sheet: &SolutionSheet,
     piece: &PlacedPiece,
     part_name: Option<&str>,
 ) -> Vec<PieceGraphicLabel> {
     let width = f64::from(piece.rect.width);
     let height = f64::from(piece.rect.length);
-    if width <= 0.0 || height <= 0.0 {
+    let target_font_size = f64::from(sheet.width.min(sheet.length)) * SHEET_GRAPHIC_FONT_SIZE_RATIO;
+    if width <= 0.0 || height <= 0.0 || target_font_size <= 0.0 {
         return Vec::new();
     }
 
@@ -61,7 +65,7 @@ pub fn piece_graphic_labels(
     let available_width = width - inset_x * 2.0;
     let available_height = height - inset_y * 2.0;
     let cut_id = format!("Cut {}", piece.cut_instance_label());
-    let id_font_size = (height * 0.035)
+    let id_font_size = target_font_size
         .min(available_height * 0.75)
         .min(available_width / estimated_text_width(&cut_id, 1.0));
     let id_height = id_font_size * 1.25;
@@ -78,7 +82,7 @@ pub fn piece_graphic_labels(
 
     let name_top = inset_y + id_height + id_font_size * 0.25;
     let name_height = (height - inset_y - name_top).max(0.0);
-    let name_font_size = height * 0.035;
+    let name_font_size = id_font_size;
     let lines = wrap_graphic_label(part_name, available_width, name_height, name_font_size);
     let line_height = name_font_size * 1.25;
     let mut line_span = 0.0;
@@ -505,8 +509,9 @@ mod tests {
 
     #[test]
     fn graphic_labels_share_cut_id_and_wrap_part_names_to_piece_bounds() {
+        let sheet = solution_sheet(200, 400);
         let piece = piece(10, 100);
-        let labels = piece_graphic_labels(&piece, Some("Side panel"));
+        let labels = piece_graphic_labels(&sheet, &piece, Some("Side panel label"));
 
         assert_eq!(piece.cut_instance_label(), "#7-1");
         assert_eq!(labels[0].text, "Cut #7-1");
@@ -516,7 +521,7 @@ mod tests {
                 .skip(1)
                 .map(|label| label.text.as_str())
                 .collect::<Vec<_>>(),
-            ["Side", "pan", "el"]
+            ["Side", "panel", "label"]
         );
         assert!(labels.iter().all(|label| {
             label.x >= 0.0
@@ -526,16 +531,33 @@ mod tests {
     }
 
     #[test]
-    fn graphic_labels_truncate_long_names_and_skip_names_that_cannot_fit() {
+    fn graphic_label_sizes_are_consistent_unless_the_piece_requires_shrinking() {
+        let sheet = solution_sheet(100, 80);
+        let large_labels = piece_graphic_labels(&sheet, &piece(50, 40), Some("Large"));
+        let small_labels = piece_graphic_labels(&sheet, &piece(30, 20), Some("Small"));
+        assert_eq!(large_labels[0].font_size, small_labels[0].font_size);
+        assert_eq!(large_labels[0].font_size, large_labels[1].font_size);
+        assert_eq!(small_labels[0].font_size, small_labels[1].font_size);
+
+        let tiny_labels = piece_graphic_labels(&sheet, &piece(1, 1), Some("Tiny"));
+        assert!(tiny_labels[0].font_size < large_labels[0].font_size);
+        assert_eq!(tiny_labels[0].font_size, tiny_labels[1].font_size);
+    }
+
+    #[test]
+    fn graphic_labels_truncate_long_names_to_fit_piece_bounds() {
+        let sheet = solution_sheet(200, 200);
         let large_piece = piece(100, 100);
-        let labels = piece_graphic_labels(&large_piece, Some(&"A".repeat(2_000)));
+        let labels = piece_graphic_labels(&sheet, &large_piece, Some(&"A".repeat(2_000)));
         assert!(labels.len() <= 21);
         assert!(labels.last().unwrap().text.ends_with("..."));
 
-        let narrow_piece = piece(1, 100);
-        let labels = piece_graphic_labels(&narrow_piece, Some("Side panel"));
-        assert_eq!(labels.len(), 1);
+        let tiny_piece = piece(1, 1);
+        let labels =
+            piece_graphic_labels(&sheet, &tiny_piece, Some("This is a very long part label"));
+        assert_eq!(labels.len(), 3);
         assert_eq!(labels[0].text, "Cut #7-1");
+        assert!(labels.last().unwrap().text.ends_with(".."));
     }
 
     #[test]

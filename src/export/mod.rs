@@ -297,7 +297,7 @@ fn sheet_layout_page_content(
         }
 
         for piece in &sheet.placed_pieces {
-            add_piece(&mut content, &transform, piece, cut_labels);
+            add_piece(&mut content, &transform, sheet, piece, cut_labels);
         }
 
         add_kerf_geometries(&mut content, &transform, sheet, layout);
@@ -329,6 +329,7 @@ fn sheet_layout_page_content(
 fn add_piece(
     content: &mut String,
     transform: &SheetPdfTransform,
+    sheet: &SolutionSheet,
     piece: &PlacedPiece,
     cut_labels: &HashMap<PieceId, &str>,
 ) {
@@ -340,12 +341,13 @@ fn add_piece(
     };
     add_filled_rect(content, rect, fill, None, 0.0);
 
-    add_piece_labels(content, rect, piece, transform.scale, cut_labels);
+    add_piece_labels(content, rect, sheet, piece, transform.scale, cut_labels);
 }
 
 fn add_piece_labels(
     content: &mut String,
     rect: PdfRect,
+    sheet: &SolutionSheet,
     piece: &PlacedPiece,
     scale: f64,
     cut_labels: &HashMap<PieceId, &str>,
@@ -354,7 +356,7 @@ fn add_piece_labels(
         .get(&piece.cut_id)
         .filter(|label| !label.trim().is_empty())
         .copied();
-    let labels = piece_graphic_labels(piece, name);
+    let labels = piece_graphic_labels(sheet, piece, name);
     if labels.is_empty() {
         return;
     }
@@ -1055,7 +1057,9 @@ mod tests {
 
     #[test]
     fn graphic_uses_shared_top_left_cut_id_and_part_name_layout() {
-        let piece = sample_solution().sheets[0].placed_pieces[0].clone();
+        let solution = sample_solution();
+        let sheet = &solution.sheets[0];
+        let piece = &sheet.placed_pieces[0];
         let cut_labels = HashMap::from([(PieceId(7), "Side panel")]);
         let mut content = String::new();
 
@@ -1067,7 +1071,8 @@ mod tests {
                 width: 75.0,
                 height: 100.0,
             },
-            &piece,
+            sheet,
+            piece,
             2.5,
             &cut_labels,
         );
@@ -1079,11 +1084,14 @@ mod tests {
 
     #[test]
     fn graphic_keeps_cut_id_visible_when_part_name_does_not_fit() {
-        let mut piece = sample_solution().sheets[0].placed_pieces[0].clone();
+        let solution = sample_solution();
+        let mut sheet = solution.sheets[0].clone();
+        let mut piece = solution.sheets[0].placed_pieces[0].clone();
         piece.instance = 2;
         piece.rect.width = 1;
-        piece.rect.length = 100;
-        let cut_labels = HashMap::from([(PieceId(7), "Side panel")]);
+        piece.rect.length = 1;
+        sheet.placed_pieces[0] = piece.clone();
+        let cut_labels = HashMap::from([(PieceId(7), "This is a very long part label")]);
         let mut content = String::new();
 
         add_piece_labels(
@@ -1092,15 +1100,17 @@ mod tests {
                 x: 0.0,
                 y: 0.0,
                 width: 1.0,
-                height: 100.0,
+                height: 1.0,
             },
+            &sheet,
             &piece,
             1.0,
             &cut_labels,
         );
 
         assert!(content.contains("(Cut #7-3) Tj"));
-        assert!(!content.contains("Side panel"));
+        assert!(content.contains("(This is) Tj"));
+        assert!(content.contains(".."));
     }
 
     #[test]
