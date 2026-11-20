@@ -30,6 +30,164 @@ pub struct PlacedPiece {
     pub rotated: bool,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PieceGraphicLabel {
+    pub text: String,
+    pub x: f64,
+    pub top: f64,
+    pub font_size: f64,
+}
+
+impl PlacedPiece {
+    #[must_use]
+    pub fn cut_instance_label(&self) -> String {
+        format!("#{}-{}", self.cut_id.0, self.instance + 1)
+    }
+}
+
+#[must_use]
+pub fn piece_graphic_labels(
+    piece: &PlacedPiece,
+    part_name: Option<&str>,
+) -> Vec<PieceGraphicLabel> {
+    let width = f64::from(piece.rect.width);
+    let height = f64::from(piece.rect.length);
+    if width <= 0.0 || height <= 0.0 {
+        return Vec::new();
+    }
+
+    let inset_x = width * 0.02;
+    let inset_y = height * 0.02;
+    let available_width = width - inset_x * 2.0;
+    let available_height = height - inset_y * 2.0;
+    let cut_id = format!("Cut {}", piece.cut_instance_label());
+    let id_font_size = (height * 0.035)
+        .min(available_height * 0.75)
+        .min(available_width / estimated_text_width(&cut_id, 1.0));
+    let id_height = id_font_size * 1.25;
+    let mut labels = vec![PieceGraphicLabel {
+        text: cut_id,
+        x: inset_x,
+        top: inset_y,
+        font_size: id_font_size,
+    }];
+
+    let Some(part_name) = part_name.filter(|name| !name.trim().is_empty()) else {
+        return labels;
+    };
+
+    let name_top = inset_y + id_height + id_font_size * 0.25;
+    let name_height = (height - inset_y - name_top).max(0.0);
+    let name_font_size = height * 0.035;
+    let lines = wrap_graphic_label(part_name, available_width, name_height, name_font_size);
+    let line_height = name_font_size * 1.25;
+    let mut line_span = 0.0;
+    for _ in lines.iter().skip(1) {
+        line_span += line_height;
+    }
+    let first_line_top = name_top + (name_height - line_span - line_height) / 2.0;
+    let mut top = first_line_top;
+    for text in lines {
+        labels.push(PieceGraphicLabel {
+            text,
+            x: inset_x,
+            top,
+            font_size: name_font_size,
+        });
+        top += line_height;
+    }
+
+    labels
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    reason = "text lengths bound label layout capacities"
+)]
+fn wrap_graphic_label(
+    label: &str,
+    available_width: f64,
+    available_height: f64,
+    font_size: f64,
+) -> Vec<String> {
+    let character_width = font_size * 0.6;
+    let line_height = font_size * 1.25;
+    let text_length = label.chars().count();
+    let max_characters_per_line = ((available_width / character_width)
+        .floor()
+        .min(text_length as f64)) as usize;
+    let max_lines = ((available_height / line_height)
+        .floor()
+        .min(text_length as f64)) as usize;
+    if max_characters_per_line == 0 || max_lines == 0 {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    for word in label.split_whitespace() {
+        let word_length = word.chars().count();
+        let current_length = current_line.chars().count();
+        if !current_line.is_empty() && current_length + 1 + word_length <= max_characters_per_line {
+            current_line.push(' ');
+            current_line.push_str(word);
+            continue;
+        }
+
+        if !current_line.is_empty() {
+            lines.push(std::mem::take(&mut current_line));
+        }
+
+        let word_characters = word.chars().collect::<Vec<_>>();
+        let mut chunk = String::new();
+        let mut word_offset = 0;
+        while word_offset < word_characters.len() {
+            let remaining = word_characters.len() - word_offset;
+            let mut chunk_length = remaining.min(max_characters_per_line);
+            if max_characters_per_line > 1
+                && remaining > max_characters_per_line
+                && remaining - max_characters_per_line == 1
+            {
+                chunk_length -= 1;
+            }
+            for character in &word_characters[word_offset..word_offset + chunk_length] {
+                chunk.push(*character);
+            }
+            word_offset += chunk_length;
+            if word_offset < word_characters.len() {
+                lines.push(std::mem::take(&mut chunk));
+            }
+        }
+        current_line = chunk;
+    }
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
+        let ellipsis = ".".repeat((max_characters_per_line / 3).clamp(1, 3));
+        let last_line = lines.last_mut().expect("truncated lines are non-empty");
+        while last_line.chars().count() + ellipsis.len() > max_characters_per_line {
+            last_line.pop();
+        }
+        last_line.push_str(&ellipsis);
+    }
+
+    lines
+}
+
+fn estimated_text_width(text: &str, font_size: f64) -> f64 {
+    text.chars().fold(0.0, |width, _| width + font_size * 0.6)
+}
+
+#[must_use]
+pub fn solution_sheet_uses_kerf_base(sheet: &SolutionSheet, layout: LayoutKind) -> bool {
+    layout == LayoutKind::Nested
+        || (layout == LayoutKind::Guillotine && sheet.cutting_guide.is_some())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
     pub x: u32,
@@ -333,6 +491,51 @@ mod tests {
             width,
             length,
         }
+    }
+
+    fn piece(width: u32, length: u32) -> PlacedPiece {
+        PlacedPiece {
+            cut_id: PieceId(7),
+            instance: 0,
+            rect: rect(width, length),
+            pattern: PatternDirection::None,
+            rotated: false,
+        }
+    }
+
+    #[test]
+    fn graphic_labels_share_cut_id_and_wrap_part_names_to_piece_bounds() {
+        let piece = piece(10, 100);
+        let labels = piece_graphic_labels(&piece, Some("Side panel"));
+
+        assert_eq!(piece.cut_instance_label(), "#7-1");
+        assert_eq!(labels[0].text, "Cut #7-1");
+        assert_eq!(
+            labels
+                .iter()
+                .skip(1)
+                .map(|label| label.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Side", "pan", "el"]
+        );
+        assert!(labels.iter().all(|label| {
+            label.x >= 0.0
+                && label.top >= 0.0
+                && label.top + label.font_size * 1.25 <= f64::from(piece.rect.length)
+        }));
+    }
+
+    #[test]
+    fn graphic_labels_truncate_long_names_and_skip_names_that_cannot_fit() {
+        let large_piece = piece(100, 100);
+        let labels = piece_graphic_labels(&large_piece, Some(&"A".repeat(2_000)));
+        assert!(labels.len() <= 21);
+        assert!(labels.last().unwrap().text.ends_with("..."));
+
+        let narrow_piece = piece(1, 100);
+        let labels = piece_graphic_labels(&narrow_piece, Some("Side panel"));
+        assert_eq!(labels.len(), 1);
+        assert_eq!(labels[0].text, "Cut #7-1");
     }
 
     #[test]

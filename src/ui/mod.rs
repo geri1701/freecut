@@ -3,7 +3,7 @@
 //! UI code edits `domain::Project` and displays `render::Solution`, but does not own
 //! optimizer-specific data structures.
 
-use std::fmt::Write as _;
+use std::{collections::HashMap, fmt::Write as _};
 
 use eframe::egui;
 use rfd::FileDialog;
@@ -20,8 +20,9 @@ use crate::{
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_file, save_project_file, ProjectDocument, PROJECT_FILE_EXTENSION},
     render::{
-        solution_sheet_kerf_geometries, CutKerfGeometry as CutPreviewGeometry,
-        CutKerfLine as CutPreviewLine, PlacedPiece, Rect as SolutionRect, Solution, SolutionSheet,
+        piece_graphic_labels, solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base,
+        CutKerfGeometry as CutPreviewGeometry, CutKerfLine as CutPreviewLine, PlacedPiece,
+        Rect as SolutionRect, Solution, SolutionSheet,
     },
 };
 
@@ -1332,6 +1333,13 @@ impl FreecutApp {
                 }
 
                 let highlighted_cut_id = selected_cut_id(&self.state);
+                let cut_labels = self
+                    .state
+                    .project
+                    .cut_pieces
+                    .iter()
+                    .map(|piece| (piece.id, piece.label.as_str()))
+                    .collect::<HashMap<_, _>>();
                 selected_piece_details(ui, &self.state, texts);
                 let mut pending_graphic_selection = None;
                 let sheet_view_max_height = dynamic_sheet_view_max_height(ui.available_height());
@@ -1370,7 +1378,10 @@ impl FreecutApp {
                             highlighted_cut_id,
                             sheet_view_max_height,
                             texts,
-                            solution.layout,
+                            SolutionGraphicContext {
+                                layout: solution.layout,
+                                cut_labels: &cut_labels,
+                            },
                         ) {
                             pending_graphic_selection = Some((index, piece_index));
                         }
@@ -1436,6 +1447,12 @@ struct SheetViewBounds {
     scale: f32,
 }
 
+#[derive(Clone, Copy)]
+struct SolutionGraphicContext<'a> {
+    layout: LayoutKind,
+    cut_labels: &'a HashMap<PieceId, &'a str>,
+}
+
 fn draw_solution_sheet(
     ui: &mut egui::Ui,
     sheet: &SolutionSheet,
@@ -1443,7 +1460,7 @@ fn draw_solution_sheet(
     highlighted_cut_id: Option<PieceId>,
     max_height: f32,
     texts: UiTexts,
-    layout: LayoutKind,
+    context: SolutionGraphicContext<'_>,
 ) -> Option<usize> {
     let Some(bounds) = sheet_view_bounds(sheet, ui.available_width(), max_height) else {
         ui.colored_label(
@@ -1460,10 +1477,10 @@ fn draw_solution_sheet(
     );
 
     painter.rect_filled(response.rect, 0.0, SHEET_VIEW_BACKGROUND_COLOR);
-    painter.rect_filled(sheet_rect, 0.0, sheet_surface_color(sheet, layout));
+    painter.rect_filled(sheet_rect, 0.0, sheet_surface_color(sheet, context.layout));
 
-    let draw_neutral_waste_boundaries = should_draw_neutral_waste_boundaries(sheet, layout);
-    let draw_piece_boundaries = should_draw_piece_boundaries(sheet, layout);
+    let draw_neutral_waste_boundaries = should_draw_neutral_waste_boundaries(sheet, context.layout);
+    let draw_piece_boundaries = should_draw_piece_boundaries(sheet, context.layout);
     for waste in &sheet.waste {
         let waste_rect = solution_rect_to_screen_rect(*waste, sheet_rect, bounds.scale);
         painter.rect_filled(waste_rect, 0.0, SHEET_WASTE_COLOR);
@@ -1485,10 +1502,11 @@ fn draw_solution_sheet(
             bounds.scale,
             highlighted_cut_id == Some(piece.cut_id),
             draw_piece_boundaries,
+            context.cut_labels,
         );
     }
 
-    draw_cut_kerf_preview(&painter, sheet, sheet_rect, bounds.scale, layout);
+    draw_cut_kerf_preview(&painter, sheet, sheet_rect, bounds.scale, context.layout);
 
     let border_color = if selected {
         egui::Color32::from_rgb(80, 130, 240)
@@ -1521,16 +1539,11 @@ fn should_draw_piece_boundaries(sheet: &SolutionSheet, layout: LayoutKind) -> bo
 }
 
 fn sheet_surface_color(sheet: &SolutionSheet, layout: LayoutKind) -> egui::Color32 {
-    if should_paint_uncovered_kerf_base(sheet, layout) {
+    if solution_sheet_uses_kerf_base(sheet, layout) {
         CUT_KERF_COLOR
     } else {
         SHEET_SURFACE_COLOR
     }
-}
-
-fn should_paint_uncovered_kerf_base(sheet: &SolutionSheet, layout: LayoutKind) -> bool {
-    layout == LayoutKind::Nested
-        || (layout == LayoutKind::Guillotine && sheet.cutting_guide.is_some())
 }
 
 fn draw_placed_piece(
@@ -1540,6 +1553,7 @@ fn draw_placed_piece(
     scale: f32,
     highlighted: bool,
     draw_boundary: bool,
+    cut_labels: &HashMap<PieceId, &str>,
 ) {
     let piece_rect = solution_rect_to_screen_rect(piece.rect, sheet_rect, scale);
     painter.rect_filled(piece_rect, 0.0, piece_fill_color(piece, highlighted));
@@ -1555,13 +1569,27 @@ fn draw_placed_piece(
             egui::StrokeKind::Inside,
         );
     }
-    painter.text(
-        piece_rect.center(),
-        egui::Align2::CENTER_CENTER,
-        piece_label(piece),
-        egui::FontId::monospace(11.0),
-        PIECE_LABEL_COLOR,
-    );
+    let clipped_painter = painter.with_clip_rect(piece_rect);
+    for label in piece_graphic_labels(piece, cut_labels.get(&piece.cut_id).copied()) {
+        clipped_painter.text(
+            egui::pos2(
+                piece_rect.left() + graphic_label_screen_value(label.x, scale),
+                piece_rect.top() + graphic_label_screen_value(label.top, scale),
+            ),
+            egui::Align2::LEFT_TOP,
+            label.text,
+            egui::FontId::monospace(graphic_label_screen_value(label.font_size, scale)),
+            PIECE_LABEL_COLOR,
+        );
+    }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "egui uses f32 display coordinates"
+)]
+fn graphic_label_screen_value(value: f64, scale: f32) -> f32 {
+    (value * f64::from(scale)) as f32
 }
 
 fn draw_cut_kerf_preview(
@@ -1722,10 +1750,6 @@ fn hit_test_placed_piece(
         .map(|(index, _)| index)
 }
 
-fn piece_label(piece: &PlacedPiece) -> String {
-    format!("#{}-{}", piece.cut_id.0, piece.instance + 1)
-}
-
 fn piece_fill_color(piece: &PlacedPiece, highlighted: bool) -> egui::Color32 {
     if highlighted {
         PIECE_HIGHLIGHT_FILL_COLOR
@@ -1820,7 +1844,7 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
                     details.sheet_index + 1,
                     texts.solution_piece_label(),
                     details.piece_index + 1,
-                    piece_label(details.placed_piece)
+                    details.placed_piece.cut_instance_label()
                 ));
                 ui.end_row();
 
@@ -3713,7 +3737,7 @@ broken,0,20,1\n";
             rotated: false,
         };
 
-        assert_eq!(piece_label(&piece), "#7-3");
+        assert_eq!(piece.cut_instance_label(), "#7-3");
     }
 
     #[test]
