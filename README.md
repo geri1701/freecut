@@ -32,7 +32,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 - Interactive graphical solution preview
 - Red kerf/gap visualization in the GUI and PDF export
 - GUI and PDF solution graphics share cut IDs, part labels, and label placement
-- PDF export with sheet drawings and cut lists
+- PDF export with sheet drawings and cut lists, with an optional project setting to open the PDF after export
 - CSV import for stock and cut lists
 - Project save/load support
 - Native file dialogs for project files, CSV import, and PDF export

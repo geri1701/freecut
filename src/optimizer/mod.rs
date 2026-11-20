@@ -2522,6 +2522,7 @@ mod tests {
                 kerf_width: 3,
                 layout: LayoutKind::Guillotine,
                 rotation_mode: RotationMode::PerPart,
+                open_pdf_after_export: false,
             },
         }
     }

@@ -89,6 +89,8 @@ pub struct CutSettings {
         deserialize_with = "deserialize_rotation_mode"
     )]
     pub rotation_mode: RotationMode,
+    #[serde(default)]
+    pub open_pdf_after_export: bool,
 }
 
 fn deserialize_rotation_mode<'de, D>(deserializer: D) -> Result<RotationMode, D::Error>

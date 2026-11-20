@@ -165,6 +165,7 @@ mod tests {
                 kerf_width: parse_length("1/8", Unit::Inch).expect("fixture parses"),
                 layout: LayoutKind::Guillotine,
                 rotation_mode: RotationMode::All,
+                open_pdf_after_export: true,
             },
         };
         let document = ProjectDocument::new(project, OptimizerEffort::Thorough);
@@ -206,6 +207,7 @@ mod tests {
 
         assert_eq!(document.version, PROJECT_FILE_VERSION);
         assert_eq!(document.project.settings.rotation_mode, RotationMode::All);
+        assert!(!document.project.settings.open_pdf_after_export);
         assert!(!document.project.cut_pieces[0].can_rotate);
         assert_eq!(
             document.project.cut_pieces[0].pattern,
@@ -218,6 +220,7 @@ mod tests {
             document.project.settings.rotation_mode,
             RotationMode::PerPart
         );
+        assert!(!document.project.settings.open_pdf_after_export);
     }
 
     #[test]
@@ -358,6 +361,7 @@ mod tests {
                     kerf_width: parse_length("1/96", Unit::Foot).expect("fixture parses"),
                     layout: LayoutKind::Guillotine,
                     rotation_mode: RotationMode::PerPart,
+                    open_pdf_after_export: false,
                 },
             },
             OptimizerEffort::Balanced,

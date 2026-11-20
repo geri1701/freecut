@@ -779,6 +779,13 @@ impl UiTexts {
         }
     }
 
+    fn open_pdf_after_export_label(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Open PDF after export",
+            UiLanguage::German => "PDF nach dem Export öffnen",
+        }
+    }
+
     fn pdf_export_hint(self) -> &'static str {
         match self.language {
             UiLanguage::English => {
@@ -808,6 +815,24 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => format!("PDF exported: {path}"),
             UiLanguage::German => format!("PDF exportiert: {path}"),
+        }
+    }
+
+    fn pdf_exported_and_opened_message(self, path: &str) -> String {
+        match self.language {
+            UiLanguage::English => format!("PDF exported and opened: {path}"),
+            UiLanguage::German => format!("PDF exportiert und geöffnet: {path}"),
+        }
+    }
+
+    fn pdf_export_open_failed_message(self, path: &str, error: impl std::fmt::Display) -> String {
+        match self.language {
+            UiLanguage::English => {
+                format!("PDF exported but could not be opened: {path}: {error}")
+            }
+            UiLanguage::German => {
+                format!("PDF exportiert, aber konnte nicht geöffnet werden: {path}: {error}")
+            }
         }
     }
 
@@ -1109,6 +1134,12 @@ impl FreecutApp {
                     &mut self.state.optimizer_effort,
                     texts,
                 );
+                ui.end_row();
+
+                ui.label(texts.open_pdf_after_export_label());
+                changed |= ui
+                    .checkbox(&mut self.state.project.settings.open_pdf_after_export, "")
+                    .changed();
                 ui.end_row();
 
                 ui.label(texts.language_label());
@@ -2265,6 +2296,13 @@ fn load_project_from_state_path(state: &mut FreecutAppState) {
 }
 
 fn export_solution_from_state_path(state: &mut FreecutAppState) {
+    export_solution_from_state_path_with_opener(state, open_pdf_document);
+}
+
+fn export_solution_from_state_path_with_opener(
+    state: &mut FreecutAppState,
+    opener: impl FnOnce(&str) -> std::io::Result<()>,
+) {
     let texts = UiTexts::new(state.language);
     let path = state.export_path.trim();
     if path.is_empty() {
@@ -2288,9 +2326,22 @@ fn export_solution_from_state_path(state: &mut FreecutAppState) {
         &state.project.cut_pieces,
     ) {
         Ok(()) => {
-            let message = texts.pdf_exported_message(path);
-            state.export_report = Some(message);
-            state.error_message = None;
+            if state.project.settings.open_pdf_after_export {
+                match opener(path) {
+                    Ok(()) => {
+                        state.export_report = Some(texts.pdf_exported_and_opened_message(path));
+                        state.error_message = None;
+                    }
+                    Err(error) => {
+                        let message = texts.pdf_export_open_failed_message(path, error);
+                        state.export_report = Some(message.clone());
+                        state.error_message = Some(message);
+                    }
+                }
+            } else {
+                state.export_report = Some(texts.pdf_exported_message(path));
+                state.error_message = None;
+            }
         }
         Err(error) => {
             let message = texts.pdf_export_failed_message(error);
@@ -2298,6 +2349,39 @@ fn export_solution_from_state_path(state: &mut FreecutAppState) {
             state.error_message = Some(message);
         }
     }
+}
+
+fn open_pdf_document(path: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        spawn_pdf_opener("xdg-open", path)
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        spawn_pdf_opener("open", path)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        spawn_pdf_opener("explorer.exe", path)
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        let _ = path;
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "opening PDFs is not supported on this platform",
+        ))
+    }
+}
+
+fn spawn_pdf_opener(program: &str, path: &str) -> std::io::Result<()> {
+    std::process::Command::new(program)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
 }
 
 fn import_csv_from_state_path(state: &mut FreecutAppState) {
@@ -2815,6 +2899,7 @@ fn empty_project() -> Project {
                 .expect("default kerf fits geometry coordinates"),
             layout: LayoutKind::Guillotine,
             rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     }
 }
@@ -2920,6 +3005,7 @@ mod tests {
         assert!(state.project_io_report.is_none());
         assert!(state.export_path.is_empty());
         assert!(state.export_report.is_none());
+        assert!(!state.project.settings.open_pdf_after_export);
         assert!(state.solution.is_none());
         assert!(state.error_message.is_none());
         assert!(!state.dirty);
@@ -2932,6 +3018,7 @@ mod tests {
             font_size: UiFontSize::Large,
             ..FreecutAppState::default()
         };
+        state.project.settings.open_pdf_after_export = true;
         state.project.name = "Existing project".to_string();
         state.project_path = "existing.freecut.json".to_string();
         state.csv_import_path = "cuts.csv".to_string();
@@ -2946,6 +3033,7 @@ mod tests {
         assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
         assert_eq!(state.language, UiLanguage::German);
         assert_eq!(state.font_size, UiFontSize::Large);
+        assert!(!state.project.settings.open_pdf_after_export);
         assert!(state.project_path.is_empty());
         assert!(state.project_io_report.is_none());
         assert!(state.csv_import_path.is_empty());
@@ -3313,6 +3401,14 @@ mod tests {
         assert_eq!(german.cut_editor_heading(), "Zuschnitte");
         assert_eq!(english.pdf_export_heading(), "PDF export");
         assert_eq!(german.pdf_export_heading(), "PDF-Export");
+        assert_eq!(
+            english.open_pdf_after_export_label(),
+            "Open PDF after export"
+        );
+        assert_eq!(
+            german.open_pdf_after_export_label(),
+            "PDF nach dem Export öffnen"
+        );
         assert_eq!(english.solution_heading(), "Solution");
         assert_eq!(german.solution_heading(), "Lösung");
         assert_eq!(
@@ -3588,6 +3684,7 @@ broken,0,20,1\n";
         add_default_stock_piece(&mut saved_state);
         add_default_cut_piece(&mut saved_state);
         saved_state.project.name = "saved project".to_string();
+        saved_state.project.settings.open_pdf_after_export = true;
         saved_state.optimizer_effort = OptimizerEffort::Thorough;
         saved_state.project_path = path.to_string_lossy().to_string();
 
@@ -3606,6 +3703,7 @@ broken,0,20,1\n";
 
         std::fs::remove_file(path).expect("remove project fixture");
         assert_eq!(loaded_state.project, saved_state.project);
+        assert!(loaded_state.project.settings.open_pdf_after_export);
         assert_eq!(loaded_state.optimizer_effort, OptimizerEffort::Thorough);
         assert!(loaded_state.solution.is_none());
         assert_eq!(loaded_state.selection, UiSelection::default());
@@ -3687,6 +3785,65 @@ broken,0,20,1\n";
             .export_report
             .as_deref()
             .is_some_and(|message| message.starts_with("PDF exported:")));
+    }
+
+    #[test]
+    fn pdf_export_opens_the_file_when_the_preference_is_enabled() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        optimize_current_project(&mut state);
+        let path = std::env::temp_dir().join(format!(
+            "freecut-ui-open-after-export-{}.pdf",
+            std::process::id()
+        ));
+        let expected_path = path.to_string_lossy().into_owned();
+        state.export_path = expected_path.clone();
+        state.project.settings.open_pdf_after_export = true;
+        let mut opened_path = None;
+
+        export_solution_from_state_path_with_opener(&mut state, |opened| {
+            opened_path = Some(opened.to_string());
+            Ok(())
+        });
+
+        assert_eq!(opened_path.as_deref(), Some(expected_path.as_str()));
+        assert!(path.exists());
+        assert!(state.error_message.is_none());
+        assert!(state
+            .export_report
+            .as_deref()
+            .is_some_and(|message| message.starts_with("PDF exported and opened:")));
+        std::fs::remove_file(path).expect("remove exported pdf fixture");
+    }
+
+    #[test]
+    fn pdf_export_reports_when_opening_the_file_fails() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        optimize_current_project(&mut state);
+        let path = std::env::temp_dir().join(format!(
+            "freecut-ui-open-failure-export-{}.pdf",
+            std::process::id()
+        ));
+        state.export_path = path.to_string_lossy().into_owned();
+        state.project.settings.open_pdf_after_export = true;
+
+        export_solution_from_state_path_with_opener(&mut state, |_| {
+            Err(std::io::Error::other("viewer unavailable"))
+        });
+
+        assert!(path.exists());
+        assert!(state
+            .error_message
+            .as_deref()
+            .is_some_and(|message| message.contains("viewer unavailable")));
+        assert!(state
+            .export_report
+            .as_deref()
+            .is_some_and(|message| message.starts_with("PDF exported but could not be opened:")));
+        std::fs::remove_file(path).expect("remove exported pdf fixture");
     }
 
     #[test]
