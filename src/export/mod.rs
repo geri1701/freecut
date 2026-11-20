@@ -647,8 +647,8 @@ fn cut_list_row_values(
     cut_labels: &HashMap<PieceId, &str>,
 ) -> [String; 8] {
     [
-        part_name(piece, cut_labels),
         piece.cut_instance_label(),
+        part_name(piece, cut_labels),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
         format_length(piece.rect.width, unit),
@@ -676,12 +676,12 @@ impl CutListColumnDefinition {
 
 const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 8] = [
     CutListColumnDefinition {
-        label: "Part",
-        minimum_width: 52.0,
-    },
-    CutListColumnDefinition {
         label: "Cut ID",
         minimum_width: 48.0,
+    },
+    CutListColumnDefinition {
+        label: "Part",
+        minimum_width: 52.0,
     },
     CutListColumnDefinition {
         label: "X",
@@ -1051,6 +1051,10 @@ mod tests {
         assert_eq!(text.matches("Side panel").count(), 2);
         assert!(text.contains("Cut ID"));
         assert!(text.contains("#7-1"));
+        assert!(
+            text.find("(Cut ID) Tj").expect("Cut ID header")
+                < text.find("(Part) Tj").expect("Part header")
+        );
         assert!(!text.contains(r"Side panel \(Cut #7-1\)"));
         assert!(text.contains("re W n"));
     }
@@ -1124,7 +1128,7 @@ mod tests {
         let long_layout = cut_list_table_layout(&[piece], Unit::Millimeter, &long_labels);
 
         assert!(short_layout.width < TABLE_WIDTH);
-        assert!(long_layout.columns[0].width > short_layout.columns[0].width);
+        assert!(long_layout.columns[1].width > short_layout.columns[1].width);
         assert!(long_layout.width <= TABLE_WIDTH);
 
         for layout in [&short_layout, &long_layout] {
