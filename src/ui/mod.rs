@@ -1368,6 +1368,7 @@ impl FreecutApp {
 
         let mut remove_index = None;
         let mut any_changed = false;
+        let mut rotation_toggle_index = None;
 
         egui::Grid::new("cut_piece_editor")
             .striped(true)
@@ -1422,28 +1423,14 @@ impl FreecutApp {
                         cut.pattern = pattern;
                         changed = true;
                     }
-                    if self.state.project.settings.rotation_mode == RotationMode::PerPart {
-                        let previous_rotation = cut.can_rotate;
-                        if ui
-                            .checkbox(&mut cut.can_rotate, texts.rotatable_label())
-                            .changed()
-                        {
-                            if cut.pattern == default_cut_pattern(previous_rotation) {
-                                cut.pattern = default_cut_pattern(cut.can_rotate);
-                            }
-                            changed = true;
-                        }
-                    } else {
-                        let mut rotatable = self
-                            .state
-                            .project
-                            .settings
-                            .rotation_mode
-                            .allows_rotation(cut.can_rotate);
-                        ui.add_enabled(
-                            false,
-                            egui::Checkbox::new(&mut rotatable, texts.rotatable_label()),
-                        );
+                    let rotation_mode = self.state.project.settings.rotation_mode;
+                    let mut rotatable = rotation_mode.allows_rotation(cut.can_rotate);
+                    if ui
+                        .checkbox(&mut rotatable, texts.rotatable_label())
+                        .changed()
+                    {
+                        rotation_toggle_index = Some(index);
+                        changed = true;
                     }
 
                     validation_label(ui, cut_validation_message(cut, texts));
@@ -1464,7 +1451,11 @@ impl FreecutApp {
             });
 
         if any_changed {
-            mark_dirty(&mut self.state);
+            if let Some(index) = rotation_toggle_index {
+                toggle_cut_rotation_from_ui(&mut self.state, index);
+            } else {
+                mark_dirty(&mut self.state);
+            }
         }
 
         if let Some(index) = remove_index {
@@ -2511,6 +2502,31 @@ fn remove_stock_piece(state: &mut FreecutAppState, index: usize) {
     }
 }
 
+fn toggle_cut_rotation_from_ui(state: &mut FreecutAppState, index: usize) {
+    if index >= state.project.cut_pieces.len() {
+        return;
+    }
+
+    let mode = state.project.settings.rotation_mode;
+    if mode != RotationMode::PerPart {
+        let global_rotation = mode == RotationMode::All;
+        for cut in &mut state.project.cut_pieces {
+            cut.pattern = effective_cut_pattern(cut.pattern, cut.can_rotate, mode);
+            cut.can_rotate = global_rotation;
+        }
+        state.project.settings.rotation_mode = RotationMode::PerPart;
+    }
+
+    let cut = &mut state.project.cut_pieces[index];
+    let previous_rotation = cut.can_rotate;
+    cut.can_rotate = !cut.can_rotate;
+    if cut.pattern == default_cut_pattern(previous_rotation) {
+        cut.pattern = default_cut_pattern(cut.can_rotate);
+    }
+
+    mark_dirty(state);
+}
+
 fn delete_all_stock(state: &mut FreecutAppState) {
     if !state.project.stock_pieces.is_empty() {
         state.project.stock_pieces.clear();
@@ -3288,6 +3304,75 @@ mod tests {
         assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
         assert_eq!(state.font_size, UiFontSize::Large);
         assert!(validation_report(&state.project).is_valid());
+    }
+
+    #[test]
+    fn rotation_click_from_all_enables_per_part_mode_and_toggles_only_clicked_cut() {
+        let mut state = FreecutAppState::default();
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.project.settings.rotation_mode = RotationMode::All;
+        state.project.cut_pieces[0].can_rotate = false;
+        state.project.cut_pieces[0].pattern = PatternDirection::ParallelToLength;
+        state.project.cut_pieces[1].can_rotate = false;
+        state.project.cut_pieces[1].pattern = PatternDirection::ParallelToWidth;
+        state.dirty = false;
+
+        toggle_cut_rotation_from_ui(&mut state, 1);
+
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
+        assert_eq!(
+            state
+                .project
+                .cut_pieces
+                .iter()
+                .map(|cut| cut.can_rotate)
+                .collect::<Vec<_>>(),
+            [true, false, true]
+        );
+        assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
+        assert_eq!(
+            state.project.cut_pieces[1].pattern,
+            PatternDirection::ParallelToWidth
+        );
+        assert_eq!(state.project.cut_pieces[2].pattern, PatternDirection::None);
+        assert!(state.dirty);
+    }
+
+    #[test]
+    fn rotation_click_from_none_enables_per_part_mode_and_toggles_only_clicked_cut() {
+        let mut state = FreecutAppState::default();
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.project.settings.rotation_mode = RotationMode::None;
+        state.project.cut_pieces[1].can_rotate = false;
+        state.project.cut_pieces[1].pattern = PatternDirection::ParallelToLength;
+        state.dirty = false;
+
+        toggle_cut_rotation_from_ui(&mut state, 2);
+
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
+        assert_eq!(
+            state
+                .project
+                .cut_pieces
+                .iter()
+                .map(|cut| cut.can_rotate)
+                .collect::<Vec<_>>(),
+            [false, false, true]
+        );
+        assert_eq!(
+            state.project.cut_pieces[0].pattern,
+            PatternDirection::ParallelToLength
+        );
+        assert_eq!(
+            state.project.cut_pieces[1].pattern,
+            PatternDirection::ParallelToLength
+        );
+        assert_eq!(state.project.cut_pieces[2].pattern, PatternDirection::None);
+        assert!(state.dirty);
     }
 
     #[test]
