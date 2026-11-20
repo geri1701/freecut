@@ -50,6 +50,40 @@ pub struct LeftoverGraphicLabel {
 
 const SHEET_GRAPHIC_FONT_SIZE_RATIO: f64 = 0.0175;
 
+#[must_use]
+pub fn sheet_cut_display_labels(sheet: &SolutionSheet) -> Vec<String> {
+    let mut piece_order = (0..sheet.placed_pieces.len()).collect::<Vec<_>>();
+    piece_order.sort_by_key(|&index| {
+        let piece = &sheet.placed_pieces[index];
+        (
+            piece.rect.y,
+            piece.rect.x,
+            piece.rect.length,
+            piece.rect.width,
+            piece.cut_id.0,
+            piece.instance,
+        )
+    });
+
+    let mut labels = vec![String::new(); piece_order.len()];
+    let mut horizontal_number = 0;
+    let mut vertical_number = 0;
+    let mut previous_y = None;
+    for index in piece_order {
+        let y = sheet.placed_pieces[index].rect.y;
+        if previous_y != Some(y) {
+            horizontal_number += 1;
+            vertical_number = 1;
+            previous_y = Some(y);
+        } else {
+            vertical_number += 1;
+        }
+        labels[index] = format!("{horizontal_number}-{vertical_number}");
+    }
+
+    labels
+}
+
 impl PlacedPiece {
     #[must_use]
     pub fn cut_instance_label(&self) -> String {
@@ -61,6 +95,7 @@ impl PlacedPiece {
 pub fn piece_graphic_labels(
     sheet: &SolutionSheet,
     piece: &PlacedPiece,
+    display_label: &str,
     part_name: Option<&str>,
 ) -> Vec<PieceGraphicLabel> {
     let width = f64::from(piece.rect.width);
@@ -74,7 +109,7 @@ pub fn piece_graphic_labels(
     let inset_y = height * 0.02;
     let available_width = width - inset_x * 2.0;
     let available_height = height - inset_y * 2.0;
-    let cut_id = format!("Cut {}", piece.cut_instance_label());
+    let cut_id = format!("Cut #{display_label}");
     let id_font_size = target_font_size
         .min(available_height * 0.75)
         .min(available_width / estimated_text_width(&cut_id, 1.0));
@@ -567,13 +602,37 @@ mod tests {
     }
 
     #[test]
-    fn graphic_labels_share_cut_id_and_wrap_part_names_to_piece_bounds() {
+    fn sheet_cut_display_labels_number_rows_then_slices_and_reset_per_sheet() {
+        let mut sheet = solution_sheet(200, 200);
+        let mut pieces = vec![piece(20, 20), piece(30, 30), piece(40, 40), piece(50, 50)];
+        pieces[0].rect.x = 100;
+        pieces[0].rect.y = 50;
+        pieces[1].rect.x = 0;
+        pieces[1].rect.y = 0;
+        pieces[2].rect.x = 50;
+        pieces[2].rect.y = 50;
+        pieces[3].rect.x = 0;
+        pieces[3].rect.y = 100;
+        sheet.placed_pieces = pieces;
+
+        assert_eq!(
+            sheet_cut_display_labels(&sheet),
+            ["2-2", "1-1", "2-1", "3-1"]
+        );
+
+        let mut next_sheet = solution_sheet(200, 200);
+        next_sheet.placed_pieces = vec![piece(20, 20)];
+        assert_eq!(sheet_cut_display_labels(&next_sheet), ["1-1"]);
+    }
+
+    #[test]
+    fn graphic_labels_use_sheet_cut_number_and_wrap_part_names_to_piece_bounds() {
         let sheet = solution_sheet(200, 400);
         let piece = piece(10, 100);
-        let labels = piece_graphic_labels(&sheet, &piece, Some("Side panel label"));
+        let labels = piece_graphic_labels(&sheet, &piece, "1-1", Some("Side panel label"));
 
         assert_eq!(piece.cut_instance_label(), "#7-1");
-        assert_eq!(labels[0].text, "Cut #7-1");
+        assert_eq!(labels[0].text, "Cut #1-1");
         assert_eq!(
             labels
                 .iter()
@@ -592,13 +651,13 @@ mod tests {
     #[test]
     fn graphic_label_sizes_are_consistent_unless_the_piece_requires_shrinking() {
         let sheet = solution_sheet(100, 80);
-        let large_labels = piece_graphic_labels(&sheet, &piece(50, 40), Some("Large"));
-        let small_labels = piece_graphic_labels(&sheet, &piece(30, 20), Some("Small"));
+        let large_labels = piece_graphic_labels(&sheet, &piece(50, 40), "1-1", Some("Large"));
+        let small_labels = piece_graphic_labels(&sheet, &piece(30, 20), "1-2", Some("Small"));
         assert_eq!(large_labels[0].font_size, small_labels[0].font_size);
         assert_eq!(large_labels[0].font_size, large_labels[1].font_size);
         assert_eq!(small_labels[0].font_size, small_labels[1].font_size);
 
-        let tiny_labels = piece_graphic_labels(&sheet, &piece(1, 1), Some("Tiny"));
+        let tiny_labels = piece_graphic_labels(&sheet, &piece(1, 1), "1-3", Some("Tiny"));
         assert!(tiny_labels[0].font_size < large_labels[0].font_size);
         assert_eq!(tiny_labels[0].font_size, tiny_labels[1].font_size);
     }
@@ -607,15 +666,19 @@ mod tests {
     fn graphic_labels_truncate_long_names_to_fit_piece_bounds() {
         let sheet = solution_sheet(200, 200);
         let large_piece = piece(100, 100);
-        let labels = piece_graphic_labels(&sheet, &large_piece, Some(&"A".repeat(2_000)));
+        let labels = piece_graphic_labels(&sheet, &large_piece, "1-1", Some(&"A".repeat(2_000)));
         assert!(labels.len() <= 21);
         assert!(labels.last().unwrap().text.ends_with("..."));
 
         let tiny_piece = piece(1, 1);
-        let labels =
-            piece_graphic_labels(&sheet, &tiny_piece, Some("This is a very long part label"));
+        let labels = piece_graphic_labels(
+            &sheet,
+            &tiny_piece,
+            "1-2",
+            Some("This is a very long part label"),
+        );
         assert_eq!(labels.len(), 3);
-        assert_eq!(labels[0].text, "Cut #7-1");
+        assert_eq!(labels[0].text, "Cut #1-2");
         assert!(labels.last().unwrap().text.ends_with(".."));
     }
 

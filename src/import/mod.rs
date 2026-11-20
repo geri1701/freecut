@@ -38,17 +38,29 @@ pub struct CsvImportError {
 #[allow(clippy::missing_errors_doc)]
 pub fn import_project_csv_file(
     path: impl AsRef<Path>,
-    first_piece_id: u64,
+    first_stock_id: u64,
+    first_cut_id: u64,
     unit: Unit,
 ) -> io::Result<CsvImportResult> {
     let source = fs::read_to_string(path)?;
-    Ok(import_project_csv(&source, first_piece_id, unit))
+    Ok(import_project_csv(
+        &source,
+        first_stock_id,
+        first_cut_id,
+        unit,
+    ))
 }
 
 #[must_use]
-pub fn import_project_csv(source: &str, first_piece_id: u64, unit: Unit) -> CsvImportResult {
+pub fn import_project_csv(
+    source: &str,
+    first_stock_id: u64,
+    first_cut_id: u64,
+    unit: Unit,
+) -> CsvImportResult {
     let mut result = CsvImportResult::default();
-    let mut next_id = first_piece_id;
+    let mut next_stock_id = first_stock_id;
+    let mut next_cut_id = first_cut_id;
     let Some((header_line, header)) = first_record(source, &mut result.errors) else {
         if result.errors.is_empty() {
             result.errors.push(CsvImportError {
@@ -76,13 +88,13 @@ pub fn import_project_csv(source: &str, first_piece_id: u64, unit: Unit) -> CsvI
             continue;
         }
 
-        match csv_piece_from_record(line, &record, &header, next_id, unit) {
+        match csv_piece_from_record(line, &record, &header, next_stock_id, next_cut_id, unit) {
             Ok(CsvPiece::Cut(cut)) => {
-                next_id += 1;
+                next_cut_id += 1;
                 result.cut_pieces.push(cut);
             }
             Ok(CsvPiece::Stock(stock)) => {
-                next_id += 1;
+                next_stock_id += 1;
                 result.stock_pieces.push(stock);
             }
             Err(error) => result.errors.push(error),
@@ -195,7 +207,8 @@ fn csv_piece_from_record(
     line: usize,
     record: &[String],
     header: &CsvHeader,
-    id: u64,
+    stock_id: u64,
+    cut_id: u64,
     unit: Unit,
 ) -> Result<CsvPiece, CsvImportError> {
     let piece_type = parse_piece_type(optional_cell(record, header.piece_type).unwrap_or_default())
@@ -228,7 +241,7 @@ fn csv_piece_from_record(
             };
 
             Ok(CsvPiece::Cut(CutPiece {
-                id: PieceId(id),
+                id: PieceId(cut_id),
                 label: label.to_string(),
                 width,
                 length,
@@ -241,7 +254,7 @@ fn csv_piece_from_record(
             let pattern =
                 parse_pattern(pattern_value).map_err(|message| CsvImportError { line, message })?;
             Ok(CsvPiece::Stock(StockPiece {
-                id: PieceId(id),
+                id: PieceId(stock_id),
                 width,
                 length,
                 quantity: Some(quantity),
@@ -428,7 +441,7 @@ mod tests {
 side,700,500,2,width,false\n\
 shelf,600,300,4,none,true\n";
 
-        let result = import_project_csv(source, 10, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 10, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert!(result.stock_pieces.is_empty());
@@ -459,7 +472,7 @@ shelf,600,300,4,none,true\n";
 fixed,700,500,1,false\n\
 rotatable,600,300,1,true\n";
 
-        let result = import_project_csv(source, 10, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 10, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert_eq!(
@@ -474,7 +487,7 @@ rotatable,600,300,1,true\n";
         let source = "name,width,length,amount,pattern,piece_type\n\
 birch,2440,1220,3,length,stock\n";
 
-        let result = import_project_csv(source, 1, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 1, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert!(result.cut_pieces.is_empty());
@@ -487,13 +500,42 @@ birch,2440,1220,3,length,stock\n";
     }
 
     #[test]
+    fn stock_and_cut_import_ids_advance_independently() {
+        let source = "label,width,length,quantity,piece_type\n\
+cut one,10,20,1,cut\n\
+birch,2440,1220,3,stock\n\
+cut two,30,40,1,cut\n\
+oak,2440,1220,2,stock\n";
+
+        let result = import_project_csv(source, 55, 99, Unit::Millimeter);
+
+        assert_eq!(result.errors, Vec::new());
+        assert_eq!(
+            result
+                .stock_pieces
+                .iter()
+                .map(|piece| piece.id)
+                .collect::<Vec<_>>(),
+            [PieceId(55), PieceId(56)]
+        );
+        assert_eq!(
+            result
+                .cut_pieces
+                .iter()
+                .map(|piece| piece.id)
+                .collect::<Vec<_>>(),
+            [PieceId(99), PieceId(100)]
+        );
+    }
+
+    #[test]
     fn reports_row_errors_without_dropping_valid_rows() {
         let source = "label,width,length,quantity\n\
 valid,10,20,1\n\
 broken,0,20,1\n\
 valid2,30,40,2\n";
 
-        let result = import_project_csv(source, 5, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 5, Unit::Millimeter);
 
         assert_eq!(result.cut_pieces.len(), 2);
         assert_eq!(result.cut_pieces[0].id, PieceId(5));
@@ -507,7 +549,7 @@ valid2,30,40,2\n";
     fn reports_missing_required_header() {
         let source = "label,width,quantity\npart,10,1\n";
 
-        let result = import_project_csv(source, 1, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 1, Unit::Millimeter);
 
         assert_eq!(result.imported_count(), 0);
         assert_eq!(result.errors.len(), 1);
@@ -519,7 +561,7 @@ valid2,30,40,2\n";
     fn parses_quoted_commas_and_escaped_quotes() {
         let source = "label,width,length,quantity\n\"left, \"\"pretty\"\" side\",10,20,1\n";
 
-        let result = import_project_csv(source, 1, Unit::Millimeter);
+        let result = import_project_csv(source, 1, 1, Unit::Millimeter);
 
         assert_eq!(result.errors, Vec::new());
         assert_eq!(result.cut_pieces[0].label, "left, \"pretty\" side");
@@ -529,7 +571,7 @@ valid2,30,40,2\n";
     fn imports_decimal_and_fractional_dimensions_in_the_project_unit() {
         let source = "label,width,length,quantity\nside,12 1/8,3.5,1\nmetric,\"3,175\",2,1\n";
 
-        let result = import_project_csv(source, 1, Unit::Inch);
+        let result = import_project_csv(source, 1, 1, Unit::Inch);
 
         assert_eq!(result.errors, Vec::new());
         assert_eq!(

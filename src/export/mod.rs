@@ -8,7 +8,7 @@ use std::{collections::HashMap, fmt, fmt::Write as _, fs, io, path::Path};
 use crate::domain::{CutPiece, LayoutKind, PieceId, Unit};
 use crate::measurement::format_length;
 use crate::render::{
-    leftover_graphic_labels, leftover_table_label, piece_graphic_labels,
+    leftover_graphic_labels, leftover_table_label, piece_graphic_labels, sheet_cut_display_labels,
     solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base, CutKerfGeometry, CutKerfLine,
     LeftoverGraphicLabel, PlacedPiece, Rect, Solution, SolutionSheet,
 };
@@ -99,6 +99,7 @@ fn export_solution_pdf_bytes_with_labels(
             .iter()
             .enumerate()
             .flat_map(|(index, sheet)| {
+                let display_labels = sheet_cut_display_labels(sheet);
                 sheet_page_contents(
                     index,
                     sheet,
@@ -106,6 +107,7 @@ fn export_solution_pdf_bytes_with_labels(
                     solution.fitness,
                     unit,
                     &cut_labels,
+                    &display_labels,
                 )
             })
             .collect()
@@ -200,7 +202,10 @@ fn empty_solution_page_content() -> String {
 
 #[derive(Debug, Clone)]
 enum CutListRow<'a> {
-    Part(&'a PlacedPiece),
+    Part {
+        piece: &'a PlacedPiece,
+        display_label: &'a str,
+    },
     LeftoversHeading,
     Leftover(LeftoverGraphicLabel),
 }
@@ -208,7 +213,10 @@ enum CutListRow<'a> {
 impl CutListRow<'_> {
     fn values(&self, unit: Unit, cut_labels: &HashMap<PieceId, &str>) -> Option<[String; 8]> {
         match self {
-            Self::Part(piece) => Some(cut_list_row_values(piece, unit, cut_labels)),
+            Self::Part {
+                piece,
+                display_label,
+            } => Some(cut_list_row_values(piece, display_label, unit, cut_labels)),
             Self::LeftoversHeading => None,
             Self::Leftover(label) => Some([
                 String::new(),
@@ -224,11 +232,22 @@ impl CutListRow<'_> {
     }
 }
 
-fn cut_list_rows_by_page(sheet: &SolutionSheet) -> Vec<Vec<CutListRow<'_>>> {
-    let mut pages = sheet
+fn cut_list_rows_by_page<'a>(
+    sheet: &'a SolutionSheet,
+    display_labels: &'a [String],
+) -> Vec<Vec<CutListRow<'a>>> {
+    let rows = sheet
         .placed_pieces
+        .iter()
+        .zip(display_labels)
+        .map(|(piece, display_label)| CutListRow::Part {
+            piece,
+            display_label,
+        })
+        .collect::<Vec<_>>();
+    let mut pages = rows
         .chunks(CUT_LIST_ROWS_PER_PAGE)
-        .map(|pieces| pieces.iter().map(CutListRow::Part).collect())
+        .map(|page| page.to_vec())
         .collect::<Vec<Vec<_>>>();
 
     let leftovers = leftover_graphic_labels(sheet);
@@ -265,12 +284,19 @@ fn sheet_page_contents(
     fitness: Option<f64>,
     unit: Unit,
     cut_labels: &HashMap<PieceId, &str>,
+    display_labels: &[String],
 ) -> Vec<String> {
     let mut pages = vec![sheet_layout_page_content(
-        index, sheet, layout, fitness, unit, cut_labels,
+        index,
+        sheet,
+        layout,
+        fitness,
+        unit,
+        cut_labels,
+        display_labels,
     )];
 
-    let table_pages = cut_list_rows_by_page(sheet);
+    let table_pages = cut_list_rows_by_page(sheet, display_labels);
     for (page_index, rows) in table_pages.iter().enumerate() {
         pages.push(cut_list_page_content(
             index,
@@ -293,6 +319,7 @@ fn sheet_layout_page_content(
     fitness: Option<f64>,
     unit: Unit,
     cut_labels: &HashMap<PieceId, &str>,
+    display_labels: &[String],
 ) -> String {
     let mut content = String::new();
     let title = format!(
@@ -356,8 +383,15 @@ fn sheet_layout_page_content(
 
         add_leftover_labels(&mut content, &transform, sheet);
 
-        for piece in &sheet.placed_pieces {
-            add_piece(&mut content, &transform, sheet, piece, cut_labels);
+        for (piece, display_label) in sheet.placed_pieces.iter().zip(display_labels) {
+            add_piece(
+                &mut content,
+                &transform,
+                sheet,
+                piece,
+                display_label,
+                cut_labels,
+            );
         }
 
         add_kerf_geometries(&mut content, &transform, sheet, layout);
@@ -391,6 +425,7 @@ fn add_piece(
     transform: &SheetPdfTransform,
     sheet: &SolutionSheet,
     piece: &PlacedPiece,
+    display_label: &str,
     cut_labels: &HashMap<PieceId, &str>,
 ) {
     let rect = transform.rect_to_pdf(piece.rect);
@@ -401,7 +436,15 @@ fn add_piece(
     };
     add_filled_rect(content, rect, fill, None, 0.0);
 
-    add_piece_labels(content, rect, sheet, piece, transform.scale, cut_labels);
+    add_piece_labels(
+        content,
+        rect,
+        sheet,
+        piece,
+        display_label,
+        transform.scale,
+        cut_labels,
+    );
 }
 
 fn add_piece_labels(
@@ -409,6 +452,7 @@ fn add_piece_labels(
     rect: PdfRect,
     sheet: &SolutionSheet,
     piece: &PlacedPiece,
+    display_label: &str,
     scale: f64,
     cut_labels: &HashMap<PieceId, &str>,
 ) {
@@ -416,7 +460,7 @@ fn add_piece_labels(
         .get(&piece.cut_id)
         .filter(|label| !label.trim().is_empty())
         .copied();
-    let labels = piece_graphic_labels(sheet, piece, name);
+    let labels = piece_graphic_labels(sheet, piece, display_label, name);
     if labels.is_empty() {
         return;
     }
@@ -759,11 +803,12 @@ fn fit_cut_list_text(text: &str, available_width: f64, font_size: f64) -> String
 
 fn cut_list_row_values(
     piece: &PlacedPiece,
+    display_label: &str,
     unit: Unit,
     cut_labels: &HashMap<PieceId, &str>,
 ) -> [String; 8] {
     [
-        piece.cut_instance_label(),
+        format!("#{display_label}"),
         part_name(piece, cut_labels),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
@@ -792,8 +837,8 @@ impl CutListColumnDefinition {
 
 const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 8] = [
     CutListColumnDefinition {
-        label: "Cut ID",
-        minimum_width: 48.0,
+        label: "H-V ID",
+        minimum_width: 52.0,
     },
     CutListColumnDefinition {
         label: "Part",
@@ -1154,7 +1199,8 @@ mod tests {
         assert!(text.contains("/Type /Catalog"));
         assert!(text.contains("/Type /Page"));
         assert!(text.contains("Freecut solution - Sheet 1 - Stock #1"));
-        assert!(text.contains("Cut #7-1"));
+        assert!(text.contains("Cut #1-1"));
+        assert_eq!(text.matches("#1-1").count(), 2);
         assert!(text.contains("xref"));
         assert!(text.contains("%%EOF"));
     }
@@ -1176,13 +1222,13 @@ mod tests {
         let text = String::from_utf8_lossy(&pdf);
 
         assert_eq!(text.matches("Side panel").count(), 2);
-        assert!(text.contains("Cut ID"));
-        assert!(text.contains("#7-1"));
+        assert!(text.contains("H-V ID"));
+        assert!(text.contains("#1-1"));
         assert!(
-            text.find("(Cut ID) Tj").expect("Cut ID header")
+            text.find("(H-V ID) Tj").expect("H-V ID header")
                 < text.find("(Part) Tj").expect("Part header")
         );
-        assert!(!text.contains(r"Side panel \(Cut #7-1\)"));
+        assert!(!text.contains(r"Side panel \(Cut #1-1\)"));
         assert!(text.contains("re W n"));
     }
 
@@ -1264,11 +1310,12 @@ mod tests {
             },
             sheet,
             piece,
+            "1-1",
             2.5,
             &cut_labels,
         );
 
-        assert!(content.contains("(Cut #7-1) Tj"));
+        assert!(content.contains("(Cut #1-1) Tj"));
         assert!(content.contains("(Side panel) Tj"));
         assert!(content.contains("10.00 20.00 75.00 100.00 re W n"));
     }
@@ -1295,11 +1342,12 @@ mod tests {
             },
             &sheet,
             &piece,
+            "1-1",
             1.0,
             &cut_labels,
         );
 
-        assert!(content.contains("(Cut #7-3) Tj"));
+        assert!(content.contains("(Cut #1-1) Tj"));
         assert!(content.contains("(This is) Tj"));
         assert!(content.contains(".."));
     }
@@ -1309,12 +1357,15 @@ mod tests {
         let solution = sample_solution();
         let piece = &solution.sheets[0].placed_pieces[0];
         let short_labels = HashMap::from([(PieceId(7), "Door")]);
+        let row = CutListRow::Part {
+            piece,
+            display_label: "1-1",
+        };
         let short_layout =
-            cut_list_table_layout(&[CutListRow::Part(piece)], Unit::Millimeter, &short_labels);
+            cut_list_table_layout(std::slice::from_ref(&row), Unit::Millimeter, &short_labels);
         let long_label = "A very long panel name ".repeat(20);
         let long_labels = HashMap::from([(PieceId(7), long_label.as_str())]);
-        let long_layout =
-            cut_list_table_layout(&[CutListRow::Part(piece)], Unit::Millimeter, &long_labels);
+        let long_layout = cut_list_table_layout(&[row], Unit::Millimeter, &long_labels);
 
         assert!(short_layout.width < TABLE_WIDTH);
         assert!(long_layout.columns[1].width > short_layout.columns[1].width);
@@ -1392,7 +1443,9 @@ mod tests {
         assert!(text.contains("Width"));
         assert!(text.contains("Length"));
         assert!(text.contains("Rotation"));
-        assert!(text.contains("Cut #7-113"));
+        let display_labels = sheet_cut_display_labels(&solution.sheets[0]);
+        let last_label = display_labels.last().expect("piece display label");
+        assert!(text.contains(&format!("Cut #{last_label}")));
         assert!(!text.contains("... 85 more"));
         assert!(!text.contains("continued on following page"));
     }

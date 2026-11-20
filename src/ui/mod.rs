@@ -21,9 +21,10 @@ use crate::{
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_file, save_project_file, ProjectDocument, PROJECT_FILE_EXTENSION},
     render::{
-        leftover_graphic_labels, piece_graphic_labels, solution_sheet_kerf_geometries,
-        solution_sheet_uses_kerf_base, CutKerfGeometry as CutPreviewGeometry,
-        CutKerfLine as CutPreviewLine, PlacedPiece, Rect as SolutionRect, Solution, SolutionSheet,
+        leftover_graphic_labels, piece_graphic_labels, sheet_cut_display_labels,
+        solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base,
+        CutKerfGeometry as CutPreviewGeometry, CutKerfLine as CutPreviewLine, PlacedPiece,
+        Rect as SolutionRect, Solution, SolutionSheet,
     },
 };
 
@@ -1530,6 +1531,7 @@ impl FreecutApp {
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for (index, sheet) in solution.sheets.iter().enumerate() {
+                        let display_labels = sheet_cut_display_labels(sheet);
                         let selected = self.state.selection.sheet_index == Some(index);
                         ui.horizontal(|ui| {
                             if ui
@@ -1565,6 +1567,7 @@ impl FreecutApp {
                                 sheet,
                                 layout: solution.layout,
                                 cut_labels: &cut_labels,
+                                display_labels: &display_labels,
                             },
                         ) {
                             pending_graphic_selection = Some((index, piece_index));
@@ -1636,6 +1639,16 @@ struct SolutionGraphicContext<'a> {
     sheet: &'a SolutionSheet,
     layout: LayoutKind,
     cut_labels: &'a HashMap<PieceId, &'a str>,
+    display_labels: &'a [String],
+}
+
+#[derive(Clone, Copy)]
+struct PlacedPieceGraphicContext<'a> {
+    sheet: &'a SolutionSheet,
+    sheet_rect: egui::Rect,
+    scale: f32,
+    display_label: &'a str,
+    part_name: Option<&'a str>,
 }
 
 fn draw_solution_sheet(
@@ -1660,7 +1673,6 @@ fn draw_solution_sheet(
         response.rect.min + egui::vec2(SHEET_VIEW_PADDING, SHEET_VIEW_PADDING),
         bounds.sheet_size,
     );
-
     painter.rect_filled(response.rect, 0.0, SHEET_VIEW_BACKGROUND_COLOR);
     painter.rect_filled(sheet_rect, 0.0, sheet_surface_color(sheet, context.layout));
 
@@ -1696,15 +1708,19 @@ fn draw_solution_sheet(
         );
     }
 
-    for piece in &sheet.placed_pieces {
+    for (piece_index, piece) in sheet.placed_pieces.iter().enumerate() {
         draw_placed_piece(
             &painter,
             piece,
-            sheet_rect,
-            bounds.scale,
             highlighted_cut_id == Some(piece.cut_id),
             draw_piece_boundaries,
-            context,
+            PlacedPieceGraphicContext {
+                sheet,
+                sheet_rect,
+                scale: bounds.scale,
+                display_label: &context.display_labels[piece_index],
+                part_name: context.cut_labels.get(&piece.cut_id).copied(),
+            },
         );
     }
 
@@ -1751,13 +1767,11 @@ fn sheet_surface_color(sheet: &SolutionSheet, layout: LayoutKind) -> egui::Color
 fn draw_placed_piece(
     painter: &egui::Painter,
     piece: &PlacedPiece,
-    sheet_rect: egui::Rect,
-    scale: f32,
     highlighted: bool,
     draw_boundary: bool,
-    context: SolutionGraphicContext<'_>,
+    context: PlacedPieceGraphicContext<'_>,
 ) {
-    let piece_rect = solution_rect_to_screen_rect(piece.rect, sheet_rect, scale);
+    let piece_rect = solution_rect_to_screen_rect(piece.rect, context.sheet_rect, context.scale);
     painter.rect_filled(piece_rect, 0.0, piece_fill_color(piece, highlighted));
     if draw_boundary {
         painter.rect_stroke(
@@ -1775,16 +1789,17 @@ fn draw_placed_piece(
     for label in piece_graphic_labels(
         context.sheet,
         piece,
-        context.cut_labels.get(&piece.cut_id).copied(),
+        context.display_label,
+        context.part_name,
     ) {
         clipped_painter.text(
             egui::pos2(
-                piece_rect.left() + graphic_label_screen_value(label.x, scale),
-                piece_rect.top() + graphic_label_screen_value(label.top, scale),
+                piece_rect.left() + graphic_label_screen_value(label.x, context.scale),
+                piece_rect.top() + graphic_label_screen_value(label.top, context.scale),
             ),
             egui::Align2::LEFT_TOP,
             label.text,
-            egui::FontId::proportional(graphic_label_screen_value(label.font_size, scale)),
+            egui::FontId::proportional(graphic_label_screen_value(label.font_size, context.scale)),
             PIECE_LABEL_COLOR,
         );
     }
@@ -1978,10 +1993,11 @@ fn waste_boundary_stroke() -> egui::Stroke {
     egui::Stroke::new(SOLUTION_BOUNDARY_STROKE_WIDTH, SHEET_WASTE_STROKE_COLOR)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct SelectedPieceDetails<'a> {
     sheet_index: usize,
     piece_index: usize,
+    display_label: String,
     placed_piece: &'a PlacedPiece,
     cut_piece: Option<&'a CutPiece>,
 }
@@ -2050,12 +2066,12 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
             .show(ui, |ui| {
                 ui.label(texts.solution_heading());
                 ui.label(format!(
-                    "{} {} · {} {} · {}",
+                    "{} {} · {} {} · #{}",
                     texts.sheet_label(),
                     details.sheet_index + 1,
                     texts.solution_piece_label(),
                     details.piece_index + 1,
-                    details.placed_piece.cut_instance_label()
+                    details.display_label
                 ));
                 ui.end_row();
 
@@ -2093,11 +2109,9 @@ fn selected_placed_piece_details(state: &FreecutAppState) -> Option<SelectedPiec
     let solution = state.solution.as_ref()?;
     let sheet_index = state.selection.sheet_index?;
     let piece_index = state.selection.placed_piece_index?;
-    let placed_piece = solution
-        .sheets
-        .get(sheet_index)?
-        .placed_pieces
-        .get(piece_index)?;
+    let sheet = solution.sheets.get(sheet_index)?;
+    let display_label = sheet_cut_display_labels(sheet).get(piece_index)?.clone();
+    let placed_piece = sheet.placed_pieces.get(piece_index)?;
     let cut_piece = state
         .project
         .cut_pieces
@@ -2107,6 +2121,7 @@ fn selected_placed_piece_details(state: &FreecutAppState) -> Option<SelectedPiec
     Some(SelectedPieceDetails {
         sheet_index,
         piece_index,
+        display_label,
         placed_piece,
         cut_piece,
     })
@@ -2387,7 +2402,8 @@ fn import_csv_from_state_path(state: &mut FreecutAppState) {
 
     match import_project_csv_file(
         path,
-        next_piece_id(&state.project).0,
+        next_stock_piece_id(&state.project).0,
+        next_cut_piece_id(&state.project).0,
         state.project.settings.unit,
     ) {
         Ok(result) => apply_csv_import_result(state, result),
@@ -2461,7 +2477,7 @@ fn optimize_current_project(state: &mut FreecutAppState) {
 }
 
 fn add_default_stock_piece(state: &mut FreecutAppState) {
-    let id = next_piece_id(&state.project);
+    let id = next_stock_piece_id(&state.project);
     state.project.stock_pieces.push(StockPiece {
         id,
         width: length_from_whole_units(2440, Unit::Millimeter)
@@ -2476,7 +2492,7 @@ fn add_default_stock_piece(state: &mut FreecutAppState) {
 }
 
 fn add_default_cut_piece(state: &mut FreecutAppState) {
-    let id = next_piece_id(&state.project);
+    let id = next_cut_piece_id(&state.project);
     let can_rotate = true;
     state.project.cut_pieces.push(CutPiece {
         id,
@@ -2580,21 +2596,28 @@ fn is_validation_error_message(message: &str) -> bool {
         || message.starts_with(VALIDATION_ERROR_PREFIX_DE)
 }
 
-fn next_piece_id(project: &Project) -> PieceId {
-    let max_stock_id = project
-        .stock_pieces
-        .iter()
-        .map(|piece| piece.id.0)
-        .max()
-        .unwrap_or(0);
-    let max_cut_id = project
-        .cut_pieces
-        .iter()
-        .map(|piece| piece.id.0)
-        .max()
-        .unwrap_or(0);
+fn next_stock_piece_id(project: &Project) -> PieceId {
+    PieceId(
+        project
+            .stock_pieces
+            .iter()
+            .map(|piece| piece.id.0)
+            .max()
+            .unwrap_or(0)
+            + 1,
+    )
+}
 
-    PieceId(max_stock_id.max(max_cut_id) + 1)
+fn next_cut_piece_id(project: &Project) -> PieceId {
+    PieceId(
+        project
+            .cut_pieces
+            .iter()
+            .map(|piece| piece.id.0)
+            .max()
+            .unwrap_or(0)
+            + 1,
+    )
 }
 
 fn dimension_drag_value(value: &mut u32, unit: Unit) -> egui::DragValue<'_> {
@@ -3063,6 +3086,22 @@ mod tests {
     }
 
     #[test]
+    fn reset_project_restarts_stock_and_cut_id_sequences() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+
+        reset_project(&mut state);
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+
+        assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
+    }
+
+    #[test]
     fn reset_request_confirms_before_discarding_dirty_project() {
         let mut state = FreecutAppState::default();
         state.project.name = "Unsaved project".to_string();
@@ -3149,16 +3188,20 @@ mod tests {
     }
 
     #[test]
-    fn adding_rows_assigns_unique_ids_and_marks_state_dirty() {
+    fn stock_and_cut_ids_start_independently_and_mark_state_dirty() {
         let mut state = FreecutAppState::default();
 
         add_default_stock_piece(&mut state);
         add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_stock_piece(&mut state);
 
         assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.stock_pieces[1].id, PieceId(2));
         assert_eq!(state.project.stock_pieces[0].quantity, Some(1));
-        assert_eq!(state.project.cut_pieces[0].id, PieceId(2));
-        assert_eq!(state.project.cut_pieces[0].label, "cut-2");
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[1].id, PieceId(2));
+        assert_eq!(state.project.cut_pieces[0].label, "cut-1");
         assert!(state.project.cut_pieces[0].can_rotate);
         assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
         assert!(state.dirty);
@@ -3682,7 +3725,8 @@ broken,0,20,1\n\
 valid2,30,40,2\n";
         let result = crate::import::import_project_csv(
             csv,
-            next_piece_id(&state.project).0,
+            next_stock_piece_id(&state.project).0,
+            next_cut_piece_id(&state.project).0,
             state.project.settings.unit,
         );
 
@@ -3703,7 +3747,7 @@ valid2,30,40,2\n";
     }
 
     #[test]
-    fn csv_import_from_state_path_reads_file_and_uses_next_piece_id() {
+    fn csv_import_from_state_path_uses_independent_cut_id() {
         let mut state = FreecutAppState::default();
         add_default_stock_piece(&mut state);
         state.dirty = false;
@@ -3721,7 +3765,8 @@ valid2,30,40,2\n";
         std::fs::remove_file(path).expect("remove csv fixture");
         assert_eq!(state.project.stock_pieces.len(), 1);
         assert_eq!(state.project.cut_pieces.len(), 1);
-        assert_eq!(state.project.cut_pieces[0].id, PieceId(2));
+        assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
         assert_eq!(
             state.csv_import_report.as_deref(),
             Some("CSV import: 1 cut piece(s), 0 stock piece(s), 0 error(s)")
@@ -3741,7 +3786,8 @@ valid,10,20,1\n\
 broken,0,20,1\n";
         let result = crate::import::import_project_csv(
             csv,
-            next_piece_id(&state.project).0,
+            next_stock_piece_id(&state.project).0,
+            next_cut_piece_id(&state.project).0,
             state.project.settings.unit,
         );
 
@@ -4621,8 +4667,8 @@ broken,0,20,1\n";
                 width: 200,
                 length: 100,
                 placed_pieces: vec![
-                    placed_piece(PieceId(2), 0, 0, 0, 50, 50),
-                    placed_piece(PieceId(3), 0, 50, 0, 50, 50),
+                    placed_piece(PieceId(1), 0, 0, 0, 50, 50),
+                    placed_piece(PieceId(2), 0, 50, 0, 50, 50),
                 ],
                 waste: Vec::new(),
                 cutting_guide: None,
@@ -4652,7 +4698,7 @@ broken,0,20,1\n";
                 stock_id: PieceId(1),
                 width: 200,
                 length: 100,
-                placed_pieces: vec![placed_piece(PieceId(2), 3, 10, 20, 70, 30)],
+                placed_pieces: vec![placed_piece(PieceId(1), 3, 10, 20, 70, 30)],
                 waste: Vec::new(),
                 cutting_guide: None,
             }],
@@ -4665,6 +4711,7 @@ broken,0,20,1\n";
 
         assert_eq!(details.sheet_index, 0);
         assert_eq!(details.piece_index, 0);
+        assert_eq!(details.display_label, "1-1");
         assert_eq!(details.placed_piece.rect.x, 10);
         assert_eq!(details.cut_piece.expect("input cut").label, "door");
     }

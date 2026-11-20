@@ -31,7 +31,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 - Deterministic optimizer behavior
 - Interactive graphical solution preview
 - Red kerf/gap visualization in the GUI and PDF export
-- GUI and PDF solution graphics share cut IDs, part labels, and label placement
+- GUI and PDF outputs use per-sheet horizontal-vertical (H-V) labels, numbering rows top-to-bottom and pieces left-to-right within each row
 - PDF export with sheet drawings and cut lists, with an optional project setting to open the PDF after export
 - CSV import for stock and cut lists
 - Project save/load support
