@@ -15,16 +15,18 @@ use crate::render::{
 const PAGE_WIDTH: f64 = 842.0;
 const PAGE_HEIGHT: f64 = 595.0;
 const MARGIN: f64 = 36.0;
+const TABLE_MARGIN: f64 = 18.0;
 const LAYOUT_DRAWING_AREA: PdfRect = PdfRect {
     x: MARGIN,
     y: 60.0,
     width: PAGE_WIDTH - MARGIN * 2.0,
     height: 420.0,
 };
-const TABLE_X: f64 = MARGIN;
+const TABLE_X: f64 = TABLE_MARGIN;
 const TABLE_TOP_Y: f64 = 490.0;
-const TABLE_WIDTH: f64 = PAGE_WIDTH - MARGIN * 2.0;
+const TABLE_WIDTH: f64 = PAGE_WIDTH - TABLE_MARGIN * 2.0;
 const TABLE_ROW_HEIGHT: f64 = 16.0;
+const TABLE_CELL_HORIZONTAL_PADDING: f64 = 3.0;
 const CUT_LIST_ROWS_PER_PAGE: usize = 26;
 const PDF_KERF_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const PDF_ZERO_KERF_LINE_WIDTH: f64 = 1.0;
@@ -545,7 +547,8 @@ fn cut_list_page_content(
         false,
     );
 
-    add_cut_list_table_header(&mut content, unit);
+    let table_layout = cut_list_table_layout(pieces, unit, cut_labels);
+    add_cut_list_table_header(&mut content, &table_layout);
 
     if pieces.is_empty() {
         add_text(
@@ -569,17 +572,18 @@ fn cut_list_page_content(
             index % 2 == 1,
             unit,
             cut_labels,
+            &table_layout,
         );
     }
 
     content
 }
 
-fn add_cut_list_table_header(content: &mut String, unit: Unit) {
+fn add_cut_list_table_header(content: &mut String, table_layout: &CutListTableLayout) {
     let header = PdfRect {
         x: TABLE_X,
         y: TABLE_TOP_Y - TABLE_ROW_HEIGHT,
-        width: TABLE_WIDTH,
+        width: table_layout.width,
         height: TABLE_ROW_HEIGHT,
     };
     add_filled_rect(
@@ -590,25 +594,29 @@ fn add_cut_list_table_header(content: &mut String, unit: Unit) {
         0.6,
     );
 
-    for column in CutListColumn::ALL {
-        add_text(
+    for column in &table_layout.columns {
+        add_cut_list_cell_text(
             content,
             8.0,
-            column.text_x(),
-            TABLE_TOP_Y - 11.0,
-            &column.label(unit),
+            PdfRect {
+                x: column.x,
+                y: TABLE_TOP_Y - TABLE_ROW_HEIGHT,
+                width: column.width,
+                height: TABLE_ROW_HEIGHT,
+            },
+            &column.label,
             true,
         );
         add_vertical_line(
             content,
-            column.x(),
+            column.x,
             TABLE_TOP_Y,
             TABLE_TOP_Y - TABLE_ROW_HEIGHT,
         );
     }
     add_vertical_line(
         content,
-        TABLE_X + TABLE_WIDTH,
+        TABLE_X + table_layout.width,
         TABLE_TOP_Y,
         TABLE_TOP_Y - TABLE_ROW_HEIGHT,
     );
@@ -621,6 +629,7 @@ fn add_cut_list_table_row(
     shaded: bool,
     unit: Unit,
     cut_labels: &HashMap<PieceId, &str>,
+    table_layout: &CutListTableLayout,
 ) {
     let fill = if shaded {
         (0.96, 0.97, 0.98)
@@ -632,7 +641,7 @@ fn add_cut_list_table_row(
         PdfRect {
             x: TABLE_X,
             y: row_top_y - TABLE_ROW_HEIGHT,
-            width: TABLE_WIDTH,
+            width: table_layout.width,
             height: TABLE_ROW_HEIGHT,
         },
         fill,
@@ -640,7 +649,92 @@ fn add_cut_list_table_row(
         0.35,
     );
 
-    let values = [
+    let values = cut_list_row_values(piece, unit, cut_labels);
+
+    for (column, value) in table_layout.columns.iter().zip(values) {
+        add_cut_list_cell_text(
+            content,
+            8.0,
+            PdfRect {
+                x: column.x,
+                y: row_top_y - TABLE_ROW_HEIGHT,
+                width: column.width,
+                height: TABLE_ROW_HEIGHT,
+            },
+            &value,
+            false,
+        );
+        add_vertical_line(content, column.x, row_top_y, row_top_y - TABLE_ROW_HEIGHT);
+    }
+    add_vertical_line(
+        content,
+        TABLE_X + table_layout.width,
+        row_top_y,
+        row_top_y - TABLE_ROW_HEIGHT,
+    );
+}
+
+fn add_cut_list_cell_text(
+    content: &mut String,
+    font_size: f64,
+    cell: PdfRect,
+    text: &str,
+    bold_hint: bool,
+) {
+    let horizontal_padding = TABLE_CELL_HORIZONTAL_PADDING;
+    let text_width = (cell.width - horizontal_padding * 2.0).max(0.0);
+    let fitted_text = fit_cut_list_text(text, text_width, font_size);
+    let _ = writeln!(
+        content,
+        "q {:.2} {:.2} {:.2} {:.2} re W n",
+        cell.x + horizontal_padding,
+        cell.y,
+        text_width,
+        cell.height
+    );
+    add_text(
+        content,
+        font_size,
+        cell.x + horizontal_padding,
+        cell.y + 5.0,
+        &fitted_text,
+        bold_hint,
+    );
+    content.push_str("Q\n");
+}
+
+fn fit_cut_list_text(text: &str, available_width: f64, font_size: f64) -> String {
+    let character_width = font_size * 0.6;
+    let mut max_characters = 0;
+    let mut text_width = 0.0;
+    while text_width + character_width <= available_width + 0.01 {
+        max_characters += 1;
+        text_width += character_width;
+    }
+
+    let characters = text.chars().collect::<Vec<_>>();
+    if characters.len() <= max_characters {
+        return text.to_string();
+    }
+
+    if max_characters <= 3 {
+        return characters.into_iter().take(max_characters).collect();
+    }
+
+    let mut fitted = characters
+        .into_iter()
+        .take(max_characters - 3)
+        .collect::<String>();
+    fitted.push_str("...");
+    fitted
+}
+
+fn cut_list_row_values(
+    piece: &PlacedPiece,
+    unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+) -> [String; 7] {
+    [
         piece_label(piece, cut_labels),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
@@ -648,65 +742,16 @@ fn add_cut_list_table_row(
         format_length(piece.rect.length, unit),
         if piece.rotated { "rotated" } else { "fixed" }.to_string(),
         pattern_label(piece.pattern).to_string(),
-    ];
-
-    for (column, value) in CutListColumn::ALL.into_iter().zip(values) {
-        add_text(
-            content,
-            8.0,
-            column.text_x(),
-            row_top_y - 11.0,
-            &value,
-            false,
-        );
-        add_vertical_line(content, column.x(), row_top_y, row_top_y - TABLE_ROW_HEIGHT);
-    }
-    add_vertical_line(
-        content,
-        TABLE_X + TABLE_WIDTH,
-        row_top_y,
-        row_top_y - TABLE_ROW_HEIGHT,
-    );
+    ]
 }
 
 #[derive(Debug, Clone, Copy)]
-struct CutListColumn {
+struct CutListColumnDefinition {
     label: &'static str,
-    x: f64,
+    minimum_width: f64,
 }
 
-impl CutListColumn {
-    const ALL: [Self; 7] = [
-        Self {
-            label: "Part",
-            x: TABLE_X,
-        },
-        Self {
-            label: "X",
-            x: TABLE_X + 140.0,
-        },
-        Self {
-            label: "Y",
-            x: TABLE_X + 220.0,
-        },
-        Self {
-            label: "Width",
-            x: TABLE_X + 300.0,
-        },
-        Self {
-            label: "Length",
-            x: TABLE_X + 400.0,
-        },
-        Self {
-            label: "Rotation",
-            x: TABLE_X + 500.0,
-        },
-        Self {
-            label: "Pattern",
-            x: TABLE_X + 610.0,
-        },
-    ];
-
+impl CutListColumnDefinition {
     fn label(self, unit: Unit) -> String {
         if matches!(self.label, "X" | "Y" | "Width" | "Length") {
             format!("{} ({})", self.label, unit_label(unit))
@@ -714,14 +759,118 @@ impl CutListColumn {
             self.label.to_string()
         }
     }
+}
 
-    fn text_x(self) -> f64 {
-        self.x + 6.0
+const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 7] = [
+    CutListColumnDefinition {
+        label: "Part",
+        minimum_width: 52.0,
+    },
+    CutListColumnDefinition {
+        label: "X",
+        minimum_width: 34.0,
+    },
+    CutListColumnDefinition {
+        label: "Y",
+        minimum_width: 34.0,
+    },
+    CutListColumnDefinition {
+        label: "Width",
+        minimum_width: 44.0,
+    },
+    CutListColumnDefinition {
+        label: "Length",
+        minimum_width: 44.0,
+    },
+    CutListColumnDefinition {
+        label: "Rotation",
+        minimum_width: 48.0,
+    },
+    CutListColumnDefinition {
+        label: "Pattern",
+        minimum_width: 58.0,
+    },
+];
+
+#[derive(Debug, Clone, PartialEq)]
+struct CutListColumn {
+    label: String,
+    x: f64,
+    width: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct CutListTableLayout {
+    columns: Vec<CutListColumn>,
+    width: f64,
+}
+
+fn cut_list_table_layout(
+    pieces: &[&PlacedPiece],
+    unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+) -> CutListTableLayout {
+    let mut desired_widths = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .map(|column| {
+            column.minimum_width.max(
+                estimated_pdf_text_width(&column.label(unit), 8.0)
+                    + TABLE_CELL_HORIZONTAL_PADDING * 2.0,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    for piece in pieces {
+        for (width, value) in desired_widths
+            .iter_mut()
+            .zip(cut_list_row_values(piece, unit, cut_labels))
+        {
+            *width = width
+                .max(estimated_pdf_text_width(&value, 8.0) + TABLE_CELL_HORIZONTAL_PADDING * 2.0);
+        }
     }
 
-    fn x(self) -> f64 {
-        self.x
+    let minimum_total = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .map(|column| column.minimum_width)
+        .sum::<f64>();
+    let desired_growth = desired_widths
+        .iter()
+        .zip(CUT_LIST_COLUMN_DEFINITIONS)
+        .map(|(width, column)| width - column.minimum_width)
+        .sum::<f64>();
+    let available_growth = TABLE_WIDTH - minimum_total;
+    let growth_scale = if desired_growth > available_growth {
+        available_growth / desired_growth
+    } else {
+        1.0
+    };
+
+    let mut x = TABLE_X;
+    let columns = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .zip(desired_widths)
+        .map(|(definition, desired_width)| {
+            let width = definition.minimum_width
+                + (desired_width - definition.minimum_width) * growth_scale;
+            let column = CutListColumn {
+                label: definition.label(unit),
+                x,
+                width,
+            };
+            x += width;
+            column
+        })
+        .collect();
+
+    CutListTableLayout {
+        columns,
+        width: x - TABLE_X,
     }
+}
+
+fn estimated_pdf_text_width(text: &str, font_size: f64) -> f64 {
+    text.chars().fold(0.0, |width, _| width + font_size * 0.6)
 }
 
 fn pattern_label(pattern: crate::domain::PatternDirection) -> &'static str {
@@ -998,6 +1147,39 @@ mod tests {
         let truncated = wrap_graphic_label("Very long part label", 18.0, 8.0, 7.0);
         assert_eq!(truncated, ["Ver."]);
         assert!(truncated.iter().all(|line| line.chars().count() <= 4));
+    }
+
+    #[test]
+    fn cut_list_column_widths_follow_content_and_fit_the_page() {
+        let solution = sample_solution();
+        let piece = &solution.sheets[0].placed_pieces[0];
+        let short_labels = HashMap::from([(PieceId(7), "Door")]);
+        let short_layout = cut_list_table_layout(&[piece], Unit::Millimeter, &short_labels);
+        let long_label = "A very long panel name ".repeat(20);
+        let long_labels = HashMap::from([(PieceId(7), long_label.as_str())]);
+        let long_layout = cut_list_table_layout(&[piece], Unit::Millimeter, &long_labels);
+
+        assert!(short_layout.width < TABLE_WIDTH);
+        assert!(long_layout.columns[0].width > short_layout.columns[0].width);
+        assert!(long_layout.width <= TABLE_WIDTH);
+
+        for layout in [&short_layout, &long_layout] {
+            let mut next_x = TABLE_X;
+            for column in &layout.columns {
+                assert_eq!(column.x, next_x);
+                next_x += column.width;
+            }
+            assert_eq!(layout.width, next_x - TABLE_X);
+        }
+    }
+
+    #[test]
+    fn cut_list_text_is_shortened_to_fit_its_cell() {
+        let fitted = fit_cut_list_text("a very long part label", 60.0, 8.0);
+
+        assert!(fitted.ends_with("..."));
+        assert!(fitted.chars().count() <= 12);
+        assert_eq!(fit_cut_list_text("rotated", 60.0, 8.0), "rotated");
     }
 
     #[test]
