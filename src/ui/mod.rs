@@ -6,6 +6,7 @@
 use std::fmt::Write as _;
 
 use eframe::egui;
+use rfd::FileDialog;
 
 use crate::{
     domain::{
@@ -1056,10 +1057,10 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.project_path);
             if ui.button(texts.save_project_button()).clicked() {
-                save_project_from_state_path(&mut self.state);
+                save_project_from_ui(&mut self.state);
             }
             if ui.button(texts.load_project_button()).clicked() {
-                load_project_from_state_path(&mut self.state);
+                load_project_from_ui(&mut self.state);
             }
         });
         ui.small(texts.native_project_file_hint());
@@ -1077,7 +1078,7 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.csv_import_path);
             if ui.button(texts.csv_import_button()).clicked() {
-                import_csv_from_state_path(&mut self.state);
+                import_csv_from_ui(&mut self.state);
             }
         });
         ui.small(texts.csv_import_hint());
@@ -1395,7 +1396,7 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.export_path);
             if ui.button(texts.pdf_export_button()).clicked() {
-                export_solution_from_state_path(&mut self.state);
+                export_solution_from_ui(&mut self.state);
             }
         });
         ui.small(texts.pdf_export_hint());
@@ -1919,6 +1920,64 @@ fn select_cut_input_row(state: &mut FreecutAppState, index: usize) {
         state.selection.stock_index = None;
         state.selection.placed_piece_index = None;
     }
+}
+
+fn save_project_from_ui(state: &mut FreecutAppState) {
+    if state.project_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("Freecut project", &[PROJECT_FILE_EXTENSION])
+            .set_file_name(format!("project.{PROJECT_FILE_EXTENSION}"))
+            .save_file()
+        else {
+            return;
+        };
+        state.project_path = path.to_string_lossy().into_owned();
+    }
+
+    save_project_from_state_path(state);
+}
+
+fn load_project_from_ui(state: &mut FreecutAppState) {
+    if state.project_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("Freecut project", &[PROJECT_FILE_EXTENSION])
+            .pick_file()
+        else {
+            return;
+        };
+        state.project_path = path.to_string_lossy().into_owned();
+    }
+
+    load_project_from_state_path(state);
+}
+
+fn import_csv_from_ui(state: &mut FreecutAppState) {
+    if state.csv_import_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("CSV files", &["csv"])
+            .pick_file()
+        else {
+            return;
+        };
+        state.csv_import_path = path.to_string_lossy().into_owned();
+    }
+
+    import_csv_from_state_path(state);
+}
+
+fn export_solution_from_ui(state: &mut FreecutAppState) {
+    if state.export_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("PDF files", &["pdf"])
+            .set_file_name("solution.pdf")
+            .save_file()
+        else {
+            return;
+        };
+        state.export_path = path.to_string_lossy().into_owned();
+    }
+
+    export_solution_from_state_path(state);
 }
 
 fn save_project_from_state_path(state: &mut FreecutAppState) {

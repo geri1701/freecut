@@ -33,6 +33,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 - PDF export with sheet drawings and cut lists
 - CSV import for stock and cut lists
 - Project save/load support
+- Native file dialogs for project files, CSV import, and PDF export
 - English and German user interface
 
 ## Platform status
