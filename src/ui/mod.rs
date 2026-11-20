@@ -578,6 +578,13 @@ impl UiTexts {
         }
     }
 
+    fn delete_all_stock_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Delete all stock",
+            UiLanguage::German => "Alle Rohteile löschen",
+        }
+    }
+
     fn no_stock_pieces_label(self) -> &'static str {
         match self.language {
             UiLanguage::English => "No stock pieces yet.",
@@ -603,6 +610,13 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => "+ Cut",
             UiLanguage::German => "+ Zuschnitt",
+        }
+    }
+
+    fn delete_all_parts_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Delete all parts",
+            UiLanguage::German => "Alle Zuschnitte löschen",
         }
     }
 
@@ -1200,6 +1214,15 @@ impl FreecutApp {
             if ui.button(texts.add_stock_button()).clicked() {
                 add_default_stock_piece(&mut self.state);
             }
+            if ui
+                .add_enabled(
+                    !self.state.project.stock_pieces.is_empty(),
+                    egui::Button::new(texts.delete_all_stock_button()),
+                )
+                .clicked()
+            {
+                delete_all_stock(&mut self.state);
+            }
         });
 
         if self.state.project.stock_pieces.is_empty() {
@@ -1295,6 +1318,15 @@ impl FreecutApp {
             ui.heading(texts.cut_editor_heading());
             if ui.button(texts.add_cut_button()).clicked() {
                 add_default_cut_piece(&mut self.state);
+            }
+            if ui
+                .add_enabled(
+                    !self.state.project.cut_pieces.is_empty(),
+                    egui::Button::new(texts.delete_all_parts_button()),
+                )
+                .clicked()
+            {
+                delete_all_parts(&mut self.state);
             }
         });
 
@@ -2378,11 +2410,27 @@ fn remove_stock_piece(state: &mut FreecutAppState, index: usize) {
     }
 }
 
+fn delete_all_stock(state: &mut FreecutAppState) {
+    if !state.project.stock_pieces.is_empty() {
+        state.project.stock_pieces.clear();
+        state.selection.stock_index = None;
+        mark_dirty(state);
+    }
+}
+
 fn remove_cut_piece(state: &mut FreecutAppState, index: usize) {
     if index < state.project.cut_pieces.len() {
         state.project.cut_pieces.remove(index);
         state.selection.cut_index = previous_valid_index(state.project.cut_pieces.len(), index);
         state.selection.placed_piece_index = None;
+        mark_dirty(state);
+    }
+}
+
+fn delete_all_parts(state: &mut FreecutAppState) {
+    if !state.project.cut_pieces.is_empty() {
+        state.project.cut_pieces.clear();
+        state.selection.cut_index = None;
         mark_dirty(state);
     }
 }
@@ -2994,6 +3042,46 @@ mod tests {
         assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
         assert!(state.dirty);
         assert!(state.solution.is_none());
+    }
+
+    #[test]
+    fn deleting_all_stock_preserves_cuts_and_invalidates_solution_state() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.selection.stock_index = Some(0);
+        state.selection.cut_index = Some(0);
+        state.selection.placed_piece_index = Some(0);
+        state.dirty = false;
+
+        delete_all_stock(&mut state);
+
+        assert!(state.project.stock_pieces.is_empty());
+        assert_eq!(state.project.cut_pieces.len(), 1);
+        assert_eq!(state.selection.stock_index, None);
+        assert_eq!(state.selection.cut_index, Some(0));
+        assert_eq!(state.selection.placed_piece_index, None);
+        assert!(state.dirty);
+    }
+
+    #[test]
+    fn deleting_all_parts_preserves_stock_and_invalidates_solution_state() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.selection.stock_index = Some(0);
+        state.selection.cut_index = Some(0);
+        state.selection.placed_piece_index = Some(0);
+        state.dirty = false;
+
+        delete_all_parts(&mut state);
+
+        assert_eq!(state.project.stock_pieces.len(), 1);
+        assert!(state.project.cut_pieces.is_empty());
+        assert_eq!(state.selection.stock_index, Some(0));
+        assert_eq!(state.selection.cut_index, None);
+        assert_eq!(state.selection.placed_piece_index, None);
+        assert!(state.dirty);
     }
 
     #[test]
