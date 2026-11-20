@@ -340,46 +340,88 @@ fn add_piece(
     };
     add_filled_rect(content, rect, fill, None, 0.0);
 
-    if rect.width >= 24.0 && rect.height >= 10.0 {
-        let label = cut_labels
-            .get(&piece.cut_id)
-            .filter(|label| !label.trim().is_empty())
-            .map_or_else(
-                || piece_label(piece, cut_labels),
-                |label| (*label).to_string(),
-            );
-        let label_font_size = 7.0;
-        let label_lines =
-            wrap_graphic_label(&label, rect.width - 6.0, rect.height - 2.0, label_font_size);
-        if !label_lines.is_empty() {
-            let _ = writeln!(
-                content,
-                "q {:.2} {:.2} {:.2} {:.2} re W n",
-                rect.x + 3.0,
-                rect.y + 1.0,
-                rect.width - 6.0,
-                rect.height - 2.0
-            );
-            let line_height = label_font_size + 1.0;
-            let mut line_span = 0.0;
-            for _ in label_lines.iter().skip(1) {
-                line_span += line_height;
-            }
-            let mut baseline = rect.y + rect.height / 2.0 - 2.5 + line_span / 2.0;
-            for line in label_lines {
-                add_text(
-                    content,
-                    label_font_size,
-                    rect.x + 3.0,
-                    baseline,
-                    &line,
-                    false,
-                );
-                baseline -= line_height;
-            }
-            content.push_str("Q\n");
-        }
+    add_piece_labels(content, rect, piece, cut_labels);
+}
+
+fn add_piece_labels(
+    content: &mut String,
+    rect: PdfRect,
+    piece: &PlacedPiece,
+    cut_labels: &HashMap<PieceId, &str>,
+) {
+    let inset_x = (rect.width * 0.1).min(2.0);
+    let inset_y = (rect.height * 0.1).min(2.0);
+    let available_width = rect.width - inset_x * 2.0;
+    let available_height = rect.height - inset_y * 2.0;
+    if available_width <= 0.0 || available_height <= 0.0 {
+        return;
     }
+
+    let id = format!("Cut {}", cut_id_label(piece));
+    let id_font_size = 7.0_f64
+        .min(available_height * 0.75)
+        .min(available_width / estimated_pdf_text_width(&id, 1.0));
+    let id_cell_height = id_font_size + 1.0;
+    let id_cell_y = rect.y + rect.height - inset_y - id_cell_height;
+    let _ = writeln!(
+        content,
+        "q {:.2} {:.2} {:.2} {:.2} re W n",
+        rect.x + inset_x,
+        id_cell_y,
+        available_width,
+        id_cell_height
+    );
+    add_text(
+        content,
+        id_font_size,
+        rect.x + inset_x,
+        id_cell_y + id_font_size * 0.25,
+        &id,
+        false,
+    );
+    content.push_str("Q\n");
+
+    let Some(name) = cut_labels
+        .get(&piece.cut_id)
+        .filter(|label| !label.trim().is_empty())
+    else {
+        return;
+    };
+
+    let name_y = rect.y + inset_y;
+    let name_height = (id_cell_y - name_y - 1.0).max(0.0);
+    let name_font_size = 7.0;
+    let name_lines = wrap_graphic_label(name, available_width, name_height, name_font_size);
+    if name_lines.is_empty() {
+        return;
+    }
+
+    let _ = writeln!(
+        content,
+        "q {:.2} {:.2} {:.2} {:.2} re W n",
+        rect.x + inset_x,
+        name_y,
+        available_width,
+        name_height
+    );
+    let line_height = name_font_size + 1.0;
+    let mut line_span = 0.0;
+    for _ in name_lines.iter().skip(1) {
+        line_span += line_height;
+    }
+    let mut baseline = name_y + name_height / 2.0 - name_font_size * 0.36 + line_span / 2.0;
+    for line in name_lines {
+        add_text(
+            content,
+            name_font_size,
+            rect.x + inset_x,
+            baseline,
+            &line,
+            false,
+        );
+        baseline -= line_height;
+    }
+    content.push_str("Q\n");
 }
 
 fn wrap_graphic_label(
@@ -1072,16 +1114,6 @@ fn add_text(content: &mut String, size: f64, x: f64, y: f64, text: &str, bold_hi
     );
 }
 
-fn piece_label(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
-    let cut_instance = format!("Cut {}", cut_id_label(piece));
-    cut_labels
-        .get(&piece.cut_id)
-        .filter(|label| !label.trim().is_empty())
-        .map_or(cut_instance.clone(), |label| {
-            format!("{label} ({cut_instance})")
-        })
-}
-
 fn part_name(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
     cut_labels
         .get(&piece.cut_id)
@@ -1165,6 +1197,51 @@ mod tests {
         let truncated = wrap_graphic_label("Very long part label", 18.0, 8.0, 7.0);
         assert_eq!(truncated, ["Ver."]);
         assert!(truncated.iter().all(|line| line.chars().count() <= 4));
+    }
+
+    #[test]
+    fn graphic_shows_cut_id_at_top_left_and_part_name_when_room_allows() {
+        let piece = sample_solution().sheets[0].placed_pieces[0].clone();
+        let cut_labels = HashMap::from([(PieceId(7), "Side panel")]);
+        let mut content = String::new();
+
+        add_piece_labels(
+            &mut content,
+            PdfRect {
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+            },
+            &piece,
+            &cut_labels,
+        );
+
+        assert!(content.contains("12.00 61.75 Td (Cut #7-1) Tj ET"));
+        assert!(content.contains("(Side panel) Tj"));
+    }
+
+    #[test]
+    fn graphic_keeps_cut_id_visible_when_part_name_does_not_fit() {
+        let mut piece = sample_solution().sheets[0].placed_pieces[0].clone();
+        piece.instance = 2;
+        let cut_labels = HashMap::from([(PieceId(7), "Side panel")]);
+        let mut content = String::new();
+
+        add_piece_labels(
+            &mut content,
+            PdfRect {
+                x: 0.0,
+                y: 0.0,
+                width: 5.0,
+                height: 5.0,
+            },
+            &piece,
+            &cut_labels,
+        );
+
+        assert!(content.contains("(Cut #7-3) Tj"));
+        assert!(!content.contains("Side panel"));
     }
 
     #[test]
