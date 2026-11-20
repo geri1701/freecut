@@ -68,6 +68,7 @@ struct FreecutAppState {
     language: UiLanguage,
     project_path: String,
     project_io_report: Option<String>,
+    reset_confirmation: bool,
     csv_import_path: String,
     csv_import_report: Option<String>,
     export_path: String,
@@ -87,6 +88,7 @@ impl Default for FreecutAppState {
             language: UiLanguage::default(),
             project_path: String::new(),
             project_io_report: None,
+            reset_confirmation: false,
             csv_import_path: String::new(),
             csv_import_report: None,
             export_path: String::new(),
@@ -391,6 +393,41 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => "Load project",
             UiLanguage::German => "Projekt laden",
+        }
+    }
+
+    fn reset_project_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Reset project",
+            UiLanguage::German => "Projekt zurücksetzen",
+        }
+    }
+
+    fn reset_confirmation_title(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Start a new project?",
+            UiLanguage::German => "Neues Projekt starten?",
+        }
+    }
+
+    fn reset_confirmation_message(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Discard unsaved changes and start fresh?",
+            UiLanguage::German => "Nicht gespeicherte Änderungen verwerfen und neu beginnen?",
+        }
+    }
+
+    fn cancel_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Cancel",
+            UiLanguage::German => "Abbrechen",
+        }
+    }
+
+    fn confirm_reset_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Reset",
+            UiLanguage::German => "Zurücksetzen",
         }
     }
 
@@ -967,6 +1004,8 @@ impl eframe::App for FreecutApp {
         egui::CentralPanel::default().show(context, |ui| {
             self.solution_panel(ui);
         });
+
+        self.reset_confirmation_window(context);
     }
 }
 
@@ -1090,10 +1129,47 @@ impl FreecutApp {
                 load_project_from_ui(&mut self.state);
             }
         });
+        if ui.button(texts.reset_project_button()).clicked() {
+            request_project_reset(&mut self.state);
+        }
         ui.small(texts.native_project_file_hint());
 
         if let Some(report) = &self.state.project_io_report {
             ui.label(report);
+        }
+    }
+
+    fn reset_confirmation_window(&mut self, context: &egui::Context) {
+        if !self.state.reset_confirmation {
+            return;
+        }
+
+        let texts = UiTexts::new(self.state.language);
+        let mut open = self.state.reset_confirmation;
+        let mut confirmed = false;
+        let mut canceled = false;
+        egui::Window::new(texts.reset_confirmation_title())
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut open)
+            .show(context, |ui| {
+                ui.label(texts.reset_confirmation_message());
+                ui.horizontal(|ui| {
+                    if ui.button(texts.cancel_button()).clicked() {
+                        canceled = true;
+                    }
+                    if ui.button(texts.confirm_reset_button()).clicked() {
+                        confirmed = true;
+                    }
+                });
+            });
+
+        if confirmed {
+            reset_project(&mut self.state);
+        } else if canceled {
+            self.state.reset_confirmation = false;
+        } else {
+            self.state.reset_confirmation = open;
         }
     }
 
@@ -2010,6 +2086,22 @@ fn select_cut_input_row(state: &mut FreecutAppState, index: usize) {
     }
 }
 
+fn request_project_reset(state: &mut FreecutAppState) {
+    if state.dirty {
+        state.reset_confirmation = true;
+    } else {
+        reset_project(state);
+    }
+}
+
+fn reset_project(state: &mut FreecutAppState) {
+    let language = state.language;
+    let font_size = state.font_size;
+    *state = FreecutAppState::default();
+    state.language = language;
+    state.font_size = font_size;
+}
+
 fn save_project_from_ui(state: &mut FreecutAppState) {
     if state.project_path.trim().is_empty() {
         let Some(path) = FileDialog::new()
@@ -2766,6 +2858,52 @@ mod tests {
         assert!(state.solution.is_none());
         assert!(state.error_message.is_none());
         assert!(!state.dirty);
+    }
+
+    #[test]
+    fn reset_project_starts_fresh_and_preserves_ui_preferences() {
+        let mut state = FreecutAppState {
+            language: UiLanguage::German,
+            font_size: UiFontSize::Large,
+            ..FreecutAppState::default()
+        };
+        state.project.name = "Existing project".to_string();
+        state.project_path = "existing.freecut.json".to_string();
+        state.csv_import_path = "cuts.csv".to_string();
+        state.csv_import_report = Some("Imported".to_string());
+        state.export_path = "solution.pdf".to_string();
+        state.export_report = Some("Exported".to_string());
+        state.dirty = true;
+
+        reset_project(&mut state);
+
+        assert_eq!(state.project, empty_project());
+        assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
+        assert_eq!(state.language, UiLanguage::German);
+        assert_eq!(state.font_size, UiFontSize::Large);
+        assert!(state.project_path.is_empty());
+        assert!(state.project_io_report.is_none());
+        assert!(state.csv_import_path.is_empty());
+        assert!(state.csv_import_report.is_none());
+        assert!(state.export_path.is_empty());
+        assert!(state.export_report.is_none());
+        assert!(state.solution.is_none());
+        assert!(state.error_message.is_none());
+        assert!(!state.dirty);
+        assert!(!state.reset_confirmation);
+    }
+
+    #[test]
+    fn reset_request_confirms_before_discarding_dirty_project() {
+        let mut state = FreecutAppState::default();
+        state.project.name = "Unsaved project".to_string();
+        state.dirty = true;
+
+        request_project_reset(&mut state);
+
+        assert!(state.reset_confirmation);
+        assert_eq!(state.project.name, "Unsaved project");
+        assert!(state.dirty);
     }
 
     #[test]
