@@ -6,7 +6,7 @@
 use std::{collections::HashMap, fs, io, path::Path};
 
 use crate::{
-    domain::{CutPiece, PatternDirection, PieceId, StockPiece, Unit},
+    domain::{default_cut_pattern, CutPiece, PatternDirection, PieceId, StockPiece, Unit},
     measurement::parse_length,
 };
 
@@ -206,8 +206,7 @@ fn csv_piece_from_record(
         .map_err(|message| CsvImportError { line, message })?;
     let quantity = parse_positive_u32(cell(record, header.quantity, line)?, "quantity")
         .map_err(|message| CsvImportError { line, message })?;
-    let pattern = parse_pattern(optional_cell(record, header.pattern).unwrap_or_default())
-        .map_err(|message| CsvImportError { line, message })?;
+    let pattern_value = optional_cell(record, header.pattern).unwrap_or_default();
 
     match piece_type {
         CsvPieceType::Cut => {
@@ -222,6 +221,11 @@ fn csv_piece_from_record(
             let can_rotate =
                 parse_rotation(optional_cell(record, header.rotation).unwrap_or_default())
                     .map_err(|message| CsvImportError { line, message })?;
+            let pattern = if pattern_value.trim().is_empty() {
+                default_cut_pattern(can_rotate)
+            } else {
+                parse_pattern(pattern_value).map_err(|message| CsvImportError { line, message })?
+            };
 
             Ok(CsvPiece::Cut(CutPiece {
                 id: PieceId(id),
@@ -233,13 +237,17 @@ fn csv_piece_from_record(
                 can_rotate,
             }))
         }
-        CsvPieceType::Stock => Ok(CsvPiece::Stock(StockPiece {
-            id: PieceId(id),
-            width,
-            length,
-            quantity: Some(quantity),
-            pattern,
-        })),
+        CsvPieceType::Stock => {
+            let pattern =
+                parse_pattern(pattern_value).map_err(|message| CsvImportError { line, message })?;
+            Ok(CsvPiece::Stock(StockPiece {
+                id: PieceId(id),
+                width,
+                length,
+                quantity: Some(quantity),
+                pattern,
+            }))
+        }
     }
 }
 
@@ -443,6 +451,22 @@ shelf,600,300,4,none,true\n";
         assert!(!result.cut_pieces[0].can_rotate);
         assert_eq!(result.cut_pieces[1].id, PieceId(11));
         assert!(result.cut_pieces[1].can_rotate);
+    }
+
+    #[test]
+    fn cut_pattern_defaults_follow_rotation_when_pattern_is_omitted() {
+        let source = "label,width,length,quantity,rotation\n\
+fixed,700,500,1,false\n\
+rotatable,600,300,1,true\n";
+
+        let result = import_project_csv(source, 10, Unit::Millimeter);
+
+        assert_eq!(result.errors, Vec::new());
+        assert_eq!(
+            result.cut_pieces[0].pattern,
+            PatternDirection::ParallelToLength
+        );
+        assert_eq!(result.cut_pieces[1].pattern, PatternDirection::None);
     }
 
     #[test]

@@ -27,6 +27,7 @@ This is an intentional hard transition: the old project history is preserved, wh
 - Configurable kerf width with decimal and fractional measurements
 - Millimeter, inch, and foot project units
 - Pattern direction handling
+- None, per-part, or all-parts rotation modes with rotation-based cut pattern defaults
 - Deterministic optimizer behavior
 - Interactive graphical solution preview
 - Red kerf/gap visualization in the GUI and PDF export

@@ -10,7 +10,8 @@ use rfd::FileDialog;
 
 use crate::{
     domain::{
-        CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
+        default_cut_pattern, effective_cut_pattern, CutPiece, CutSettings, LayoutKind,
+        PatternDirection, PieceId, Project, RotationMode, StockPiece, Unit,
     },
     export::export_solution_pdf_file_with_labels,
     import::{import_project_csv_file, CsvImportResult},
@@ -631,6 +632,17 @@ impl UiTexts {
         }
     }
 
+    fn rotation_mode_label(self, mode: RotationMode) -> &'static str {
+        match (self.language, mode) {
+            (UiLanguage::English, RotationMode::None) => "None",
+            (UiLanguage::English, RotationMode::PerPart) => "Per part",
+            (UiLanguage::English, RotationMode::All) => "All",
+            (UiLanguage::German, RotationMode::None) => "Keine",
+            (UiLanguage::German, RotationMode::PerPart) => "Pro Teil",
+            (UiLanguage::German, RotationMode::All) => "Alle",
+        }
+    }
+
     fn delete_button(self) -> &'static str {
         match self.language {
             UiLanguage::English => "Delete",
@@ -1023,6 +1035,20 @@ impl FreecutApp {
                 );
                 ui.end_row();
 
+                ui.label(texts.rotation_label());
+                let mode = &mut self.state.project.settings.rotation_mode;
+                let previous_mode = *mode;
+                let mut checked = previous_mode == RotationMode::All;
+                let response = ui.add(
+                    egui::Checkbox::new(&mut checked, texts.rotation_mode_label(previous_mode))
+                        .indeterminate(previous_mode == RotationMode::PerPart),
+                );
+                if response.changed() {
+                    *mode = previous_mode.next();
+                    changed = true;
+                }
+                ui.end_row();
+
                 ui.label(texts.optimizer_effort_label());
                 changed |= effort_combo(
                     ui,
@@ -1248,10 +1274,38 @@ impl FreecutApp {
                     changed |= ui
                         .add(quantity_drag_value(&mut cut.quantity).prefix(texts.quantity_prefix()))
                         .changed();
-                    changed |= pattern_combo(ui, ("cut_pattern", index), &mut cut.pattern, texts);
-                    changed |= ui
-                        .checkbox(&mut cut.can_rotate, texts.rotatable_label())
-                        .changed();
+                    let mut pattern = effective_cut_pattern(
+                        cut.pattern,
+                        cut.can_rotate,
+                        self.state.project.settings.rotation_mode,
+                    );
+                    if pattern_combo(ui, ("cut_pattern", index), &mut pattern, texts) {
+                        cut.pattern = pattern;
+                        changed = true;
+                    }
+                    if self.state.project.settings.rotation_mode == RotationMode::PerPart {
+                        let previous_rotation = cut.can_rotate;
+                        if ui
+                            .checkbox(&mut cut.can_rotate, texts.rotatable_label())
+                            .changed()
+                        {
+                            if cut.pattern == default_cut_pattern(previous_rotation) {
+                                cut.pattern = default_cut_pattern(cut.can_rotate);
+                            }
+                            changed = true;
+                        }
+                    } else {
+                        let mut rotatable = self
+                            .state
+                            .project
+                            .settings
+                            .rotation_mode
+                            .allows_rotation(cut.can_rotate);
+                        ui.add_enabled(
+                            false,
+                            egui::Checkbox::new(&mut rotatable, texts.rotatable_label()),
+                        );
+                    }
 
                     validation_label(ui, cut_validation_message(cut, texts));
 
@@ -1823,7 +1877,12 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
                     ui.label(format!(
                         "{} · {}",
                         texts.pattern_label(cut.pattern),
-                        if cut.can_rotate {
+                        if state
+                            .project
+                            .settings
+                            .rotation_mode
+                            .allows_rotation(cut.can_rotate)
+                        {
                             texts.rotatable_label()
                         } else {
                             texts.fixed_rotation_label()
@@ -2202,6 +2261,7 @@ fn add_default_stock_piece(state: &mut FreecutAppState) {
 
 fn add_default_cut_piece(state: &mut FreecutAppState) {
     let id = next_piece_id(&state.project);
+    let can_rotate = true;
     state.project.cut_pieces.push(CutPiece {
         id,
         label: format!("cut-{}", id.0),
@@ -2210,8 +2270,8 @@ fn add_default_cut_piece(state: &mut FreecutAppState) {
         length: length_from_whole_units(100, Unit::Millimeter)
             .expect("default cut length fits geometry coordinates"),
         quantity: 1,
-        pattern: PatternDirection::None,
-        can_rotate: true,
+        pattern: default_cut_pattern(can_rotate),
+        can_rotate,
     });
     select_cut_input_row(state, state.project.cut_pieces.len() - 1);
     mark_dirty(state);
@@ -2594,9 +2654,10 @@ fn empty_project() -> Project {
         cut_pieces: Vec::new(),
         settings: CutSettings {
             unit: Unit::Millimeter,
-            kerf_width: length_from_whole_units(3, Unit::Millimeter)
+            kerf_width: length_from_whole_units(4, Unit::Millimeter)
                 .expect("default kerf fits geometry coordinates"),
             layout: LayoutKind::Guillotine,
+            rotation_mode: RotationMode::PerPart,
         },
     }
 }
@@ -2693,9 +2754,9 @@ mod tests {
         assert_eq!(state.project.settings.layout, LayoutKind::Guillotine);
         assert_eq!(
             state.project.settings.kerf_width,
-            length_from_whole_units(3, Unit::Millimeter).expect("default kerf fits")
+            length_from_whole_units(4, Unit::Millimeter).expect("default kerf fits")
         );
-        assert_eq!(state.optimizer_effort, OptimizerEffort::Fast);
+        assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
         assert_eq!(state.font_size, UiFontSize::Normal);
         assert_eq!(state.language, UiLanguage::English);
         assert!(state.project_path.is_empty());
@@ -2792,6 +2853,7 @@ mod tests {
         assert_eq!(state.project.cut_pieces[0].id, PieceId(2));
         assert_eq!(state.project.cut_pieces[0].label, "cut-2");
         assert!(state.project.cut_pieces[0].can_rotate);
+        assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
         assert!(state.dirty);
         assert!(state.solution.is_none());
     }
@@ -2984,6 +3046,14 @@ mod tests {
         assert_eq!(german.unit_setting_label(), "Einheit");
         assert_eq!(english.kerf_width_label(), "Kerf width");
         assert_eq!(german.kerf_width_label(), "Schnittfuge / Kerf");
+        assert_eq!(
+            english.rotation_mode_label(RotationMode::PerPart),
+            "Per part"
+        );
+        assert_eq!(
+            german.rotation_mode_label(RotationMode::PerPart),
+            "Pro Teil"
+        );
         assert_eq!(english.optimize_button(), "Optimize");
         assert_eq!(german.optimize_button(), "Optimieren");
         assert_eq!(english.ready_status(), "Ready");
@@ -3092,6 +3162,7 @@ mod tests {
         assert!(!state.dirty);
         assert_eq!(state.solution, solution_before);
         assert_eq!(state.project.settings.layout, LayoutKind::Guillotine);
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
     }
 
     #[test]
@@ -3112,7 +3183,10 @@ mod tests {
 
     #[test]
     fn optimize_action_reports_no_solution_without_losing_message_on_validation_sync() {
-        let mut state = FreecutAppState::default();
+        let mut state = FreecutAppState {
+            optimizer_effort: OptimizerEffort::Fast,
+            ..FreecutAppState::default()
+        };
         add_default_stock_piece(&mut state);
         add_default_cut_piece(&mut state);
         state.project.stock_pieces[0].width = 50;
@@ -3156,6 +3230,7 @@ mod tests {
     fn optimize_action_uses_german_phase_two_status_text_when_selected() {
         let mut state = FreecutAppState {
             language: UiLanguage::German,
+            optimizer_effort: OptimizerEffort::Fast,
             ..FreecutAppState::default()
         };
         add_default_stock_piece(&mut state);

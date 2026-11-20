@@ -4,7 +4,7 @@
 //! data rather than leaking an external library's result shape into the rest of the application.
 
 use crate::{
-    domain::{LayoutKind, PatternDirection, PieceId, Project},
+    domain::{effective_cut_pattern, LayoutKind, PatternDirection, PieceId, Project},
     render::{
         Cut as GuideCut, CutOrientation, LeafKind as GuideLeafKind, PlacedPiece, Rect,
         SliceNode as GuideSliceNode, Solution, SolutionSheet,
@@ -2331,9 +2331,9 @@ fn rotate_pattern(pattern: PatternDirection) -> PatternDirection {
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizerEffort {
-    #[default]
     Fast,
     Balanced,
+    #[default]
     Thorough,
 }
 
@@ -2426,8 +2426,15 @@ fn expand_project(project: &Project) -> Result<ProblemInstance, OptimizeError> {
                 instance,
                 width: cut_piece.width,
                 length: cut_piece.length,
-                pattern: cut_piece.pattern,
-                can_rotate: cut_piece.can_rotate,
+                pattern: effective_cut_pattern(
+                    cut_piece.pattern,
+                    cut_piece.can_rotate,
+                    project.settings.rotation_mode,
+                ),
+                can_rotate: project
+                    .settings
+                    .rotation_mode
+                    .allows_rotation(cut_piece.can_rotate),
             });
         }
     }
@@ -2452,7 +2459,7 @@ fn expand_project(project: &Project) -> Result<ProblemInstance, OptimizeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CutPiece, CutSettings, StockPiece, Unit};
+    use crate::domain::{CutPiece, CutSettings, RotationMode, StockPiece, Unit};
 
     fn optimize_first_fit<B>(instance: ProblemInstance) -> Result<Solution, OptimizeError>
     where
@@ -2514,6 +2521,7 @@ mod tests {
                 unit: Unit::Millimeter,
                 kerf_width: 3,
                 layout: LayoutKind::Guillotine,
+                rotation_mode: RotationMode::PerPart,
             },
         }
     }
@@ -6308,6 +6316,64 @@ mod tests {
         assert_eq!(placed.pattern, PatternDirection::None);
         assert_eq!(placed.rect.width, 50);
         assert_eq!(placed.rect.length, 100);
+    }
+
+    #[test]
+    fn global_rotation_setting_overrides_per_cut_rotation_limits() {
+        let mut project = project(
+            vec![stock_with_size(1, 50, 100, 1)],
+            vec![cut_with_size(10, 100, 50, 1)],
+        );
+        project.settings.rotation_mode = RotationMode::All;
+
+        let solution = BaselineOptimizer
+            .optimize(&project)
+            .expect("global rotation should allow the cut to fit");
+
+        assert!(solution.sheets[0].placed_pieces[0].rotated);
+    }
+
+    #[test]
+    fn global_rotation_uses_rotatable_default_pattern() {
+        let mut project = project(
+            vec![StockPiece {
+                id: PieceId(1),
+                width: 50,
+                length: 100,
+                quantity: Some(1),
+                pattern: PatternDirection::ParallelToLength,
+            }],
+            vec![CutPiece {
+                pattern: PatternDirection::ParallelToLength,
+                ..cut_with_size(10, 100, 50, 1)
+            }],
+        );
+        project.settings.rotation_mode = RotationMode::All;
+
+        let solution = BaselineOptimizer
+            .optimize(&project)
+            .expect("global rotation should use the rotatable default pattern");
+
+        let placed = &solution.sheets[0].placed_pieces[0];
+        assert!(placed.rotated);
+        assert_eq!(placed.pattern, PatternDirection::None);
+    }
+
+    #[test]
+    fn global_no_rotation_setting_overrides_per_cut_rotation_permission() {
+        let mut project = project(
+            vec![stock_with_size(1, 50, 100, 1)],
+            vec![CutPiece {
+                can_rotate: true,
+                ..cut_with_size(10, 100, 50, 1)
+            }],
+        );
+        project.settings.rotation_mode = RotationMode::None;
+
+        assert!(matches!(
+            BaselineOptimizer.optimize(&project),
+            Err(OptimizeError::NoSolution)
+        ));
     }
 
     #[test]
