@@ -733,9 +733,10 @@ fn cut_list_row_values(
     piece: &PlacedPiece,
     unit: Unit,
     cut_labels: &HashMap<PieceId, &str>,
-) -> [String; 7] {
+) -> [String; 8] {
     [
-        piece_label(piece, cut_labels),
+        part_name(piece, cut_labels),
+        cut_id_label(piece),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
         format_length(piece.rect.width, unit),
@@ -761,10 +762,14 @@ impl CutListColumnDefinition {
     }
 }
 
-const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 7] = [
+const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 8] = [
     CutListColumnDefinition {
         label: "Part",
         minimum_width: 52.0,
+    },
+    CutListColumnDefinition {
+        label: "Cut ID",
+        minimum_width: 48.0,
     },
     CutListColumnDefinition {
         label: "X",
@@ -1068,13 +1073,24 @@ fn add_text(content: &mut String, size: f64, x: f64, y: f64, text: &str, bold_hi
 }
 
 fn piece_label(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
-    let cut_instance = format!("Cut #{}-{}", piece.cut_id.0, piece.instance + 1);
+    let cut_instance = format!("Cut {}", cut_id_label(piece));
     cut_labels
         .get(&piece.cut_id)
         .filter(|label| !label.trim().is_empty())
         .map_or(cut_instance.clone(), |label| {
             format!("{label} ({cut_instance})")
         })
+}
+
+fn part_name(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
+    cut_labels
+        .get(&piece.cut_id)
+        .filter(|label| !label.trim().is_empty())
+        .map_or_else(String::new, |label| (*label).to_string())
+}
+
+fn cut_id_label(piece: &PlacedPiece) -> String {
+    format!("#{}-{}", piece.cut_id.0, piece.instance + 1)
 }
 
 fn escape_pdf_text(text: &str) -> String {
@@ -1135,7 +1151,9 @@ mod tests {
         let text = String::from_utf8_lossy(&pdf);
 
         assert_eq!(text.matches("Side panel").count(), 2);
-        assert!(text.contains(r"Side panel \(Cut #7-1\)"));
+        assert!(text.contains("Cut ID"));
+        assert!(text.contains("#7-1"));
+        assert!(!text.contains(r"Side panel \(Cut #7-1\)"));
         assert!(text.contains("re W n"));
     }
 
