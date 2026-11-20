@@ -21,9 +21,9 @@ use crate::{
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_file, save_project_file, ProjectDocument, PROJECT_FILE_EXTENSION},
     render::{
-        piece_graphic_labels, solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base,
-        CutKerfGeometry as CutPreviewGeometry, CutKerfLine as CutPreviewLine, PlacedPiece,
-        Rect as SolutionRect, Solution, SolutionSheet,
+        leftover_graphic_labels, piece_graphic_labels, solution_sheet_kerf_geometries,
+        solution_sheet_uses_kerf_base, CutKerfGeometry as CutPreviewGeometry,
+        CutKerfLine as CutPreviewLine, PlacedPiece, Rect as SolutionRect, Solution, SolutionSheet,
     },
 };
 
@@ -1655,6 +1655,23 @@ fn draw_solution_sheet(
                 egui::StrokeKind::Inside,
             );
         }
+    }
+
+    for label in leftover_graphic_labels(sheet) {
+        if label.font_size <= 0.0 {
+            continue;
+        }
+        let leftover_rect = solution_rect_to_screen_rect(label.rect, sheet_rect, bounds.scale);
+        painter.with_clip_rect(leftover_rect).text(
+            egui::pos2(
+                leftover_rect.left() + graphic_label_screen_value(label.x, bounds.scale),
+                leftover_rect.top() + graphic_label_screen_value(label.top, bounds.scale),
+            ),
+            egui::Align2::LEFT_TOP,
+            label.text,
+            egui::FontId::proportional(graphic_label_screen_value(label.font_size, bounds.scale)),
+            PIECE_LABEL_COLOR,
+        );
     }
 
     for piece in &sheet.placed_pieces {

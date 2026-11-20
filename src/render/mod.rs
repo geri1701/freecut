@@ -38,6 +38,16 @@ pub struct PieceGraphicLabel {
     pub font_size: f64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct LeftoverGraphicLabel {
+    pub rect: Rect,
+    pub number: usize,
+    pub text: String,
+    pub x: f64,
+    pub top: f64,
+    pub font_size: f64,
+}
+
 const SHEET_GRAPHIC_FONT_SIZE_RATIO: f64 = 0.0175;
 
 impl PlacedPiece {
@@ -102,6 +112,55 @@ pub fn piece_graphic_labels(
     }
 
     labels
+}
+
+#[must_use]
+pub fn leftover_table_label(number: usize) -> String {
+    format!("Leftover {number}")
+}
+
+#[must_use]
+pub fn leftover_graphic_labels(sheet: &SolutionSheet) -> Vec<LeftoverGraphicLabel> {
+    let target_font_size = f64::from(sheet.width.min(sheet.length)) * SHEET_GRAPHIC_FONT_SIZE_RATIO;
+    sheet
+        .waste
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, rect)| {
+            let number = index + 1;
+            let text = number.to_string();
+            let width = f64::from(rect.width);
+            let height = f64::from(rect.length);
+            if width <= 0.0 || height <= 0.0 || target_font_size <= 0.0 {
+                return LeftoverGraphicLabel {
+                    rect,
+                    number,
+                    text,
+                    x: 0.0,
+                    top: 0.0,
+                    font_size: 0.0,
+                };
+            }
+
+            let inset_x = width * 0.02;
+            let inset_y = height * 0.02;
+            let available_width = width - inset_x * 2.0;
+            let available_height = height - inset_y * 2.0;
+            let font_size = target_font_size
+                .min(available_height * 0.75)
+                .min(available_width / estimated_text_width(&text, 1.0));
+
+            LeftoverGraphicLabel {
+                rect,
+                number,
+                text,
+                x: inset_x,
+                top: inset_y,
+                font_size,
+            }
+        })
+        .collect()
 }
 
 #[expect(
@@ -558,6 +617,32 @@ mod tests {
         assert_eq!(labels.len(), 3);
         assert_eq!(labels[0].text, "Cut #7-1");
         assert!(labels.last().unwrap().text.ends_with(".."));
+    }
+
+    #[test]
+    fn leftover_graphic_labels_are_numbered_and_fit_their_rectangles() {
+        let mut sheet = solution_sheet(200, 400);
+        sheet.waste = vec![rect(100, 80), rect(20, 10)];
+
+        let labels = leftover_graphic_labels(&sheet);
+
+        assert_eq!(labels.len(), 2);
+        assert_eq!(labels[0].number, 1);
+        assert_eq!(labels[0].text, "1");
+        assert_eq!(labels[0].rect, sheet.waste[0]);
+        assert_eq!(labels[1].number, 2);
+        assert_eq!(labels[1].text, "2");
+        assert_eq!(labels[1].rect, sheet.waste[1]);
+        for label in labels {
+            assert!(label.font_size > 0.0);
+            assert!(label.x >= 0.0);
+            assert!(label.top >= 0.0);
+            assert!(
+                label.x + estimated_text_width(&label.text, label.font_size)
+                    <= f64::from(label.rect.width)
+            );
+            assert!(label.top + label.font_size * 1.25 <= f64::from(label.rect.length));
+        }
     }
 
     #[test]
