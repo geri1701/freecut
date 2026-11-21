@@ -1,0 +1,311 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_DEB_VERSION: 3.8.0
+  APPIMAGETOOL_VERSION: 1.9.1
+  APPIMAGETOOL_SHA256: ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
+  APPIMAGE_RUNTIME_VERSION: "20251108"
+  APPIMAGE_RUNTIME_SHA256: 2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Read and verify version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "freecut") | .version')
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: meta
+    # 22.04 keeps the glibc baseline low so the AppImage/.deb run on older distros.
+    # If this image is retired, switch to `runs-on: ubuntu-latest` with
+    # `container: ubuntu:22.04` (drop sudo; apt-get install git curl jq ca-certificates build-essential).
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Linux GUI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            desktop-file-utils \
+            pkg-config \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxrandr-dev \
+            wayland-protocols
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Verify binary only links the C runtime
+        run: |
+          set -euo pipefail
+          readelf -d target/release/freecut \
+            | awk '/NEEDED/{gsub(/[\[\]]/,"",$5); print $5}' | sort > needed.txt
+          printf '%s\n' libc.so.6 libdl.so.2 libgcc_s.so.1 libm.so.6 libpthread.so.0 ld-linux-x86-64.so.2 \
+            | sort > allowed.txt
+          echo "NEEDED:"; cat needed.txt
+          unexpected=$(comm -23 needed.txt allowed.txt)
+          if [[ -n "$unexpected" ]]; then
+            echo "::error::Unexpected shared library dependencies: $unexpected"
+            exit 1
+          fi
+
+      - name: Validate desktop file
+        run: desktop-file-validate packaging/linux/freecut.desktop
+
+      - name: Build .deb
+        run: |
+          set -euo pipefail
+          cargo install cargo-deb --locked --version "$CARGO_DEB_VERSION"
+          cargo deb --no-build
+          deb=$(ls target/debian/*.deb)
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+          mkdir -p dist
+          cp "$deb" dist/
+
+      - name: Build AppImage
+        run: |
+          set -euo pipefail
+          curl -fsSL -o appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage"
+          curl -fsSL -o runtime-x86_64 \
+            "https://github.com/AppImage/type2-runtime/releases/download/${APPIMAGE_RUNTIME_VERSION}/runtime-x86_64"
+          echo "${APPIMAGETOOL_SHA256}  appimagetool" | sha256sum -c -
+          echo "${APPIMAGE_RUNTIME_SHA256}  runtime-x86_64" | sha256sum -c -
+          chmod +x appimagetool
+
+          mkdir -p AppDir/usr/bin
+          install -m 755 target/release/freecut AppDir/usr/bin/freecut
+          install -m 644 packaging/linux/freecut.desktop AppDir/freecut.desktop
+          install -m 644 packaging/icons/freecut-512.png AppDir/freecut.png
+          ln -s freecut.png AppDir/.DirIcon
+          ln -s usr/bin/freecut AppDir/AppRun
+
+          appimage="dist/freecut-${VERSION}-x86_64.AppImage"
+          APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 ./appimagetool \
+            --no-appstream --runtime-file runtime-x86_64 AppDir "$appimage"
+
+          chmod +x "$appimage"
+          (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/$appimage" --appimage-extract >/dev/null)
+          test -e "$RUNNER_TEMP/squashfs-root/AppRun"
+          test -x "$RUNNER_TEMP/squashfs-root/usr/bin/freecut"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: freecut-linux
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    needs: meta
+    runs-on: macos-15
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build universal binary
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          lipo -create -output freecut \
+            target/aarch64-apple-darwin/release/freecut \
+            target/x86_64-apple-darwin/release/freecut
+          lipo -info freecut
+          lipo freecut -verify_arch arm64 x86_64
+
+      - name: Build app bundle
+        run: |
+          set -euo pipefail
+          iconset=freecut.iconset
+          mkdir -p "$iconset"
+          src=packaging/icons/freecut-512.png
+          for size in 16 32 128 256; do
+            sips -z "$size" "$size" "$src" --out "$iconset/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z "$double" "$double" "$src" --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          cp "$src" "$iconset/icon_512x512.png"
+          iconutil -c icns "$iconset" -o freecut.icns
+
+          app=Freecut.app
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          install -m 755 freecut "$app/Contents/MacOS/freecut"
+          cp freecut.icns "$app/Contents/Resources/freecut.icns"
+          sed "s/@VERSION@/${VERSION}/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
+          plutil -lint "$app/Contents/Info.plist"
+
+          # Ad-hoc seal (no identity); arm64 binaries must carry a signature to launch.
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --verbose=2 "$app"
+
+      - name: Build .dmg
+        run: |
+          set -euo pipefail
+          mkdir -p dmgroot dist
+          cp -R Freecut.app dmgroot/
+          ln -s /Applications dmgroot/Applications
+          dmg="dist/freecut-${VERSION}-macos-universal.dmg"
+          for attempt in 1 2 3; do
+            if hdiutil create -volname Freecut -srcfolder dmgroot -ov -format UDZO "$dmg"; then
+              break
+            fi
+            if [[ $attempt -eq 3 ]]; then
+              exit 1
+            fi
+            echo "hdiutil failed (attempt $attempt), retrying"
+            sleep 5
+          done
+          hdiutil verify "$dmg"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: freecut-macos
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    needs: meta
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build portable executable
+        env:
+          # Static CRT: no Visual C++ redistributable needed on the target machine.
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc
+
+      - name: Verify executable has no CRT DLL imports
+        run: |
+          set -euo pipefail
+          exe=target/x86_64-pc-windows-msvc/release/freecut.exe
+          readobj="$(cygpath -u "$(rustc --print sysroot)")/lib/rustlib/x86_64-pc-windows-msvc/bin/llvm-readobj.exe"
+          "$readobj" --coff-imports "$exe" | grep -i "Name:" | tee imports.txt
+          if grep -iE 'vcruntime|msvcp|api-ms-win-crt' imports.txt; then
+            echo "::error::Executable depends on the Visual C++ runtime"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$exe" "dist/freecut-${VERSION}-windows-x86_64-portable.exe"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: freecut-windows
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: [meta, linux, macos, windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            ## Downloads
+
+            | Platform | File |
+            |---|---|
+            | macOS (Apple Silicon + Intel) | `freecut-${{ needs.meta.outputs.version }}-macos-universal.dmg` |
+            | Linux (any distro) | `freecut-${{ needs.meta.outputs.version }}-x86_64.AppImage` |
+            | Debian / Ubuntu | `freecut_*_amd64.deb` |
+            | Windows (portable, no install) | `freecut-${{ needs.meta.outputs.version }}-windows-x86_64-portable.exe` |
+
+            These builds are **not code-signed**.
+
+            - **macOS:** drag Freecut to Applications, then run `xattr -dr com.apple.quarantine /Applications/Freecut.app`, or open it once and allow it under System Settings → Privacy & Security → "Open Anyway".
+            - **Windows:** if SmartScreen warns, choose "More info" → "Run anyway".
+            - **Linux AppImage:** `chmod +x freecut-*.AppImage` and run it. File dialogs need `xdg-desktop-portal` and a portal backend (installed by default on most desktops).
+            - **Debian / Ubuntu:** `sudo apt install ./freecut_*_amd64.deb`.
+
+            Verify downloads with `sha256sum -c SHA256SUMS.txt`.
