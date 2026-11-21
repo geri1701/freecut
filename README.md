@@ -27,12 +27,15 @@ This is an intentional hard transition: the old project history is preserved, wh
 - Configurable kerf width with decimal and fractional measurements
 - Millimeter, inch, and foot project units
 - Pattern direction handling
+- None, per-part, or all-parts rotation modes with rotation-based cut pattern defaults
 - Deterministic optimizer behavior
 - Interactive graphical solution preview
 - Red kerf/gap visualization in the GUI and PDF export
-- PDF export with sheet drawings and cut lists
+- GUI and PDF outputs use per-sheet horizontal-vertical (H-V) labels, numbering rows top-to-bottom and pieces left-to-right within each row
+- PDF export with sheet drawings and cut lists, with an optional project setting to open the PDF after export
 - CSV import for stock and cut lists
 - Project save/load support
+- Native file dialogs for project files, CSV import, and PDF export
 - English and German user interface
 
 ## Platform status

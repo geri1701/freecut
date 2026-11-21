@@ -3,28 +3,31 @@
 //! The first export target is a small dependency-free PDF writer. It consumes only
 //! the shared render model so GUI preview and file export stay aligned.
 
-use std::{fmt, fmt::Write as _, fs, io, path::Path};
+use std::{collections::HashMap, fmt, fmt::Write as _, fs, io, path::Path};
 
-use crate::domain::{LayoutKind, Unit};
+use crate::domain::{CutPiece, LayoutKind, PieceId, Unit};
 use crate::measurement::format_length;
 use crate::render::{
-    solution_sheet_kerf_geometries, CutKerfGeometry, CutKerfLine, PlacedPiece, Rect, Solution,
-    SolutionSheet,
+    leftover_graphic_labels, leftover_table_label, piece_graphic_labels, sheet_cut_display_labels,
+    solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base, CutKerfGeometry, CutKerfLine,
+    LeftoverGraphicLabel, PlacedPiece, Rect, Solution, SolutionSheet,
 };
 
 const PAGE_WIDTH: f64 = 842.0;
 const PAGE_HEIGHT: f64 = 595.0;
 const MARGIN: f64 = 36.0;
+const TABLE_MARGIN: f64 = 18.0;
 const LAYOUT_DRAWING_AREA: PdfRect = PdfRect {
     x: MARGIN,
     y: 60.0,
     width: PAGE_WIDTH - MARGIN * 2.0,
     height: 420.0,
 };
-const TABLE_X: f64 = MARGIN;
+const TABLE_X: f64 = TABLE_MARGIN;
 const TABLE_TOP_Y: f64 = 490.0;
-const TABLE_WIDTH: f64 = PAGE_WIDTH - MARGIN * 2.0;
+const TABLE_WIDTH: f64 = PAGE_WIDTH - TABLE_MARGIN * 2.0;
 const TABLE_ROW_HEIGHT: f64 = 16.0;
+const TABLE_CELL_HORIZONTAL_PADDING: f64 = 3.0;
 const CUT_LIST_ROWS_PER_PAGE: usize = 26;
 const PDF_KERF_COLOR: (f64, f64, f64) = (1.0, 0.0, 0.0);
 const PDF_ZERO_KERF_LINE_WIDTH: f64 = 1.0;
@@ -61,8 +64,33 @@ pub fn export_solution_pdf_file(
     Ok(())
 }
 
+pub(crate) fn export_solution_pdf_file_with_labels(
+    path: impl AsRef<Path>,
+    solution: &Solution,
+    unit: Unit,
+    cut_pieces: &[CutPiece],
+) -> Result<(), PdfExportError> {
+    fs::write(
+        path,
+        export_solution_pdf_bytes_with_labels(solution, unit, cut_pieces),
+    )?;
+    Ok(())
+}
+
 #[must_use]
 pub fn export_solution_pdf_bytes(solution: &Solution, unit: Unit) -> Vec<u8> {
+    export_solution_pdf_bytes_with_labels(solution, unit, &[])
+}
+
+fn export_solution_pdf_bytes_with_labels(
+    solution: &Solution,
+    unit: Unit,
+    cut_pieces: &[CutPiece],
+) -> Vec<u8> {
+    let cut_labels = cut_pieces
+        .iter()
+        .map(|piece| (piece.id, piece.label.as_str()))
+        .collect::<HashMap<PieceId, _>>();
     let page_contents = if solution.sheets.is_empty() {
         vec![empty_solution_page_content()]
     } else {
@@ -71,7 +99,16 @@ pub fn export_solution_pdf_bytes(solution: &Solution, unit: Unit) -> Vec<u8> {
             .iter()
             .enumerate()
             .flat_map(|(index, sheet)| {
-                sheet_page_contents(index, sheet, solution.layout, solution.fitness, unit)
+                let display_labels = sheet_cut_display_labels(sheet);
+                sheet_page_contents(
+                    index,
+                    sheet,
+                    solution.layout,
+                    solution.fitness,
+                    unit,
+                    &cut_labels,
+                    &display_labels,
+                )
             })
             .collect()
     };
@@ -81,7 +118,8 @@ pub fn export_solution_pdf_bytes(solution: &Solution, unit: Unit) -> Vec<u8> {
 
 fn pdf_document(page_contents: Vec<String>) -> Vec<u8> {
     let page_count = page_contents.len();
-    let mut objects = Vec::with_capacity(3 + page_count * 2);
+    let italic_font_id = 4 + page_count * 2;
+    let mut objects = Vec::with_capacity(4 + page_count * 2);
     let kids = (0..page_count)
         .map(|index| format!("{} 0 R", page_object_id(index)))
         .collect::<Vec<_>>()
@@ -96,7 +134,7 @@ fn pdf_document(page_contents: Vec<String>) -> Vec<u8> {
     for (index, content) in page_contents.into_iter().enumerate() {
         let content_id = content_object_id(index);
         objects.push(format!(
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_WIDTH:.0} {PAGE_HEIGHT:.0}] /Resources << /Font << /F1 3 0 R >> >> /Contents {content_id} 0 R >>"
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PAGE_WIDTH:.0} {PAGE_HEIGHT:.0}] /Resources << /Font << /F1 3 0 R /F2 {italic_font_id} 0 R >> >> /Contents {content_id} 0 R >>"
         ));
         objects.push(format!(
             "<< /Length {} >>\nstream\n{}endstream",
@@ -104,6 +142,7 @@ fn pdf_document(page_contents: Vec<String>) -> Vec<u8> {
             content
         ));
     }
+    objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>".to_string());
 
     let mut pdf = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n".to_vec();
     let mut offsets = Vec::with_capacity(objects.len());
@@ -161,26 +200,113 @@ fn empty_solution_page_content() -> String {
     content
 }
 
+#[derive(Debug, Clone)]
+enum CutListRow<'a> {
+    Part {
+        piece: &'a PlacedPiece,
+        display_label: &'a str,
+    },
+    LeftoversHeading,
+    Leftover(LeftoverGraphicLabel),
+}
+
+impl CutListRow<'_> {
+    fn values(&self, unit: Unit, cut_labels: &HashMap<PieceId, &str>) -> Option<[String; 8]> {
+        match self {
+            Self::Part {
+                piece,
+                display_label,
+            } => Some(cut_list_row_values(piece, display_label, unit, cut_labels)),
+            Self::LeftoversHeading => None,
+            Self::Leftover(label) => Some([
+                String::new(),
+                leftover_table_label(label.number),
+                format_length(label.rect.x, unit),
+                format_length(label.rect.y, unit),
+                format_length(label.rect.width, unit),
+                format_length(label.rect.length, unit),
+                String::new(),
+                String::new(),
+            ]),
+        }
+    }
+}
+
+fn cut_list_rows_by_page<'a>(
+    sheet: &'a SolutionSheet,
+    display_labels: &'a [String],
+) -> Vec<Vec<CutListRow<'a>>> {
+    let rows = sheet
+        .placed_pieces
+        .iter()
+        .zip(display_labels)
+        .map(|(piece, display_label)| CutListRow::Part {
+            piece,
+            display_label,
+        })
+        .collect::<Vec<_>>();
+    let mut pages = rows
+        .chunks(CUT_LIST_ROWS_PER_PAGE)
+        .map(|page| page.to_vec())
+        .collect::<Vec<Vec<_>>>();
+
+    let leftovers = leftover_graphic_labels(sheet);
+    if !leftovers.is_empty() {
+        let mut current = pages.pop().unwrap_or_default();
+        if current.len() + 2 > CUT_LIST_ROWS_PER_PAGE {
+            if !current.is_empty() {
+                pages.push(current);
+            }
+            current = Vec::new();
+        }
+
+        current.push(CutListRow::LeftoversHeading);
+        for label in leftovers {
+            if current.len() == CUT_LIST_ROWS_PER_PAGE {
+                pages.push(current);
+                current = vec![CutListRow::LeftoversHeading];
+            }
+            current.push(CutListRow::Leftover(label));
+        }
+        pages.push(current);
+    }
+
+    if pages.is_empty() {
+        pages.push(Vec::new());
+    }
+    pages
+}
+
 fn sheet_page_contents(
     index: usize,
     sheet: &SolutionSheet,
     layout: LayoutKind,
     fitness: Option<f64>,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+    display_labels: &[String],
 ) -> Vec<String> {
     let mut pages = vec![sheet_layout_page_content(
-        index, sheet, layout, fitness, unit,
+        index,
+        sheet,
+        layout,
+        fitness,
+        unit,
+        cut_labels,
+        display_labels,
     )];
 
-    let piece_refs = sheet.placed_pieces.iter().collect::<Vec<_>>();
-    if piece_refs.is_empty() {
-        pages.push(cut_list_page_content(index, 0, sheet, &[], unit));
-    } else {
-        for (page_index, pieces) in piece_refs.chunks(CUT_LIST_ROWS_PER_PAGE).enumerate() {
-            pages.push(cut_list_page_content(
-                index, page_index, sheet, pieces, unit,
-            ));
-        }
+    let table_pages = cut_list_rows_by_page(sheet, display_labels);
+    for (page_index, rows) in table_pages.iter().enumerate() {
+        pages.push(cut_list_page_content(
+            index,
+            page_index,
+            table_pages.len(),
+            sheet,
+            rows,
+            unit,
+            cut_labels,
+        ));
     }
 
     pages
@@ -192,6 +318,8 @@ fn sheet_layout_page_content(
     layout: LayoutKind,
     fitness: Option<f64>,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+    display_labels: &[String],
 ) -> String {
     let mut content = String::new();
     let title = format!(
@@ -253,8 +381,17 @@ fn sheet_layout_page_content(
             );
         }
 
-        for piece in &sheet.placed_pieces {
-            add_piece(&mut content, &transform, piece);
+        add_leftover_labels(&mut content, &transform, sheet);
+
+        for (piece, display_label) in sheet.placed_pieces.iter().zip(display_labels) {
+            add_piece(
+                &mut content,
+                &transform,
+                sheet,
+                piece,
+                display_label,
+                cut_labels,
+            );
         }
 
         add_kerf_geometries(&mut content, &transform, sheet, layout);
@@ -283,7 +420,14 @@ fn sheet_layout_page_content(
     content
 }
 
-fn add_piece(content: &mut String, transform: &SheetPdfTransform, piece: &PlacedPiece) {
+fn add_piece(
+    content: &mut String,
+    transform: &SheetPdfTransform,
+    sheet: &SolutionSheet,
+    piece: &PlacedPiece,
+    display_label: &str,
+    cut_labels: &HashMap<PieceId, &str>,
+) {
     let rect = transform.rect_to_pdf(piece.rect);
     let fill = if piece.rotated {
         (0.70, 0.86, 1.0)
@@ -292,22 +436,71 @@ fn add_piece(content: &mut String, transform: &SheetPdfTransform, piece: &Placed
     };
     add_filled_rect(content, rect, fill, None, 0.0);
 
-    if rect.width >= 24.0 && rect.height >= 10.0 {
-        add_text(
+    add_piece_labels(
+        content,
+        rect,
+        sheet,
+        piece,
+        display_label,
+        transform.scale,
+        cut_labels,
+    );
+}
+
+fn add_piece_labels(
+    content: &mut String,
+    rect: PdfRect,
+    sheet: &SolutionSheet,
+    piece: &PlacedPiece,
+    display_label: &str,
+    scale: f64,
+    cut_labels: &HashMap<PieceId, &str>,
+) {
+    let name = cut_labels
+        .get(&piece.cut_id)
+        .filter(|label| !label.trim().is_empty())
+        .copied();
+    let labels = piece_graphic_labels(sheet, piece, display_label, name);
+    if labels.is_empty() {
+        return;
+    }
+
+    let _ = writeln!(
+        content,
+        "q {:.2} {:.2} {:.2} {:.2} re W n",
+        rect.x, rect.y, rect.width, rect.height
+    );
+    for label in labels {
+        let font_size = label.font_size * scale;
+        let x = rect.x + label.x * scale;
+        let baseline = rect.y + rect.height - (label.top + label.font_size * 0.8) * scale;
+        add_text(content, font_size, x, baseline, &label.text, false);
+    }
+    content.push_str("Q\n");
+}
+
+fn add_leftover_labels(content: &mut String, transform: &SheetPdfTransform, sheet: &SolutionSheet) {
+    for label in leftover_graphic_labels(sheet) {
+        if label.font_size <= 0.0 {
+            continue;
+        }
+
+        let rect = transform.rect_to_pdf(label.rect);
+        let _ = writeln!(
             content,
-            7.0,
-            rect.x + 3.0,
-            rect.y + rect.height / 2.0 - 2.5,
-            &piece_label(piece),
-            false,
+            "q {:.2} {:.2} {:.2} {:.2} re W n",
+            rect.x, rect.y, rect.width, rect.height
         );
+        let font_size = label.font_size * transform.scale;
+        let x = rect.x + label.x * transform.scale;
+        let baseline = rect.y + rect.height - (label.top + label.font_size * 0.8) * transform.scale;
+        add_text(content, font_size, x, baseline, &label.text, false);
+        content.push_str("Q\n");
     }
 }
 
 fn sheet_base_fill(sheet: &SolutionSheet, layout: LayoutKind) -> (f64, f64, f64) {
-    if layout == LayoutKind::Nested
-        || (layout == LayoutKind::Guillotine && sheet.cutting_guide.is_some())
-    {
+    if solution_sheet_uses_kerf_base(sheet, layout) {
         PDF_KERF_COLOR
     } else {
         (0.98, 0.98, 0.98)
@@ -352,16 +545,13 @@ fn add_kerf_geometries(
 fn cut_list_page_content(
     sheet_index: usize,
     page_index: usize,
+    page_count: usize,
     sheet: &SolutionSheet,
-    pieces: &[&PlacedPiece],
+    rows: &[CutListRow<'_>],
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
 ) -> String {
     let mut content = String::new();
-    let page_count = sheet
-        .placed_pieces
-        .len()
-        .max(1)
-        .div_ceil(CUT_LIST_ROWS_PER_PAGE);
     let title = format!(
         "Cut list - Sheet {} - Stock #{}",
         sheet_index + 1,
@@ -389,9 +579,10 @@ fn cut_list_page_content(
         false,
     );
 
-    add_cut_list_table_header(&mut content, unit);
+    let table_layout = cut_list_table_layout(rows, unit, cut_labels);
+    add_cut_list_table_header(&mut content, &table_layout);
 
-    if pieces.is_empty() {
+    if rows.is_empty() {
         add_text(
             &mut content,
             9.0,
@@ -403,20 +594,28 @@ fn cut_list_page_content(
         return content;
     }
 
-    for (index, piece) in pieces.iter().enumerate() {
+    for (index, row) in rows.iter().enumerate() {
         let row_index = f64::from(u16::try_from(index).expect("cut list row index fits in u16"));
         let row_top_y = TABLE_TOP_Y - TABLE_ROW_HEIGHT * (row_index + 1.0);
-        add_cut_list_table_row(&mut content, row_top_y, piece, index % 2 == 1, unit);
+        add_cut_list_table_row(
+            &mut content,
+            row_top_y,
+            row,
+            index % 2 == 1,
+            unit,
+            cut_labels,
+            &table_layout,
+        );
     }
 
     content
 }
 
-fn add_cut_list_table_header(content: &mut String, unit: Unit) {
+fn add_cut_list_table_header(content: &mut String, table_layout: &CutListTableLayout) {
     let header = PdfRect {
         x: TABLE_X,
         y: TABLE_TOP_Y - TABLE_ROW_HEIGHT,
-        width: TABLE_WIDTH,
+        width: table_layout.width,
         height: TABLE_ROW_HEIGHT,
     };
     add_filled_rect(
@@ -427,25 +626,30 @@ fn add_cut_list_table_header(content: &mut String, unit: Unit) {
         0.6,
     );
 
-    for column in CutListColumn::ALL {
-        add_text(
+    for column in &table_layout.columns {
+        add_cut_list_cell_text(
             content,
             8.0,
-            column.text_x(),
-            TABLE_TOP_Y - 11.0,
-            &column.label(unit),
+            PdfRect {
+                x: column.x,
+                y: TABLE_TOP_Y - TABLE_ROW_HEIGHT,
+                width: column.width,
+                height: TABLE_ROW_HEIGHT,
+            },
+            &column.label,
             true,
+            false,
         );
         add_vertical_line(
             content,
-            column.x(),
+            column.x,
             TABLE_TOP_Y,
             TABLE_TOP_Y - TABLE_ROW_HEIGHT,
         );
     }
     add_vertical_line(
         content,
-        TABLE_X + TABLE_WIDTH,
+        TABLE_X + table_layout.width,
         TABLE_TOP_Y,
         TABLE_TOP_Y - TABLE_ROW_HEIGHT,
     );
@@ -454,10 +658,36 @@ fn add_cut_list_table_header(content: &mut String, unit: Unit) {
 fn add_cut_list_table_row(
     content: &mut String,
     row_top_y: f64,
-    piece: &PlacedPiece,
+    row: &CutListRow<'_>,
     shaded: bool,
     unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+    table_layout: &CutListTableLayout,
 ) {
+    if matches!(row, CutListRow::LeftoversHeading) {
+        add_filled_rect(
+            content,
+            PdfRect {
+                x: TABLE_X,
+                y: row_top_y - TABLE_ROW_HEIGHT,
+                width: table_layout.width,
+                height: TABLE_ROW_HEIGHT,
+            },
+            (0.90, 0.92, 0.94),
+            Some((0.78, 0.82, 0.86)),
+            0.35,
+        );
+        add_text(
+            content,
+            8.0,
+            TABLE_X + TABLE_CELL_HORIZONTAL_PADDING,
+            row_top_y - TABLE_ROW_HEIGHT + 5.0,
+            "Leftovers",
+            true,
+        );
+        return;
+    }
+
     let fill = if shaded {
         (0.96, 0.97, 0.98)
     } else {
@@ -468,7 +698,7 @@ fn add_cut_list_table_row(
         PdfRect {
             x: TABLE_X,
             y: row_top_y - TABLE_ROW_HEIGHT,
-            width: TABLE_WIDTH,
+            width: table_layout.width,
             height: TABLE_ROW_HEIGHT,
         },
         fill,
@@ -476,73 +706,126 @@ fn add_cut_list_table_row(
         0.35,
     );
 
-    let values = [
-        piece_label(piece),
+    let values = row
+        .values(unit, cut_labels)
+        .expect("non-heading rows have table values");
+    let italic = matches!(row, CutListRow::Leftover(_));
+
+    for (column, value) in table_layout.columns.iter().zip(values) {
+        add_cut_list_cell_text(
+            content,
+            8.0,
+            PdfRect {
+                x: column.x,
+                y: row_top_y - TABLE_ROW_HEIGHT,
+                width: column.width,
+                height: TABLE_ROW_HEIGHT,
+            },
+            &value,
+            false,
+            italic,
+        );
+        add_vertical_line(content, column.x, row_top_y, row_top_y - TABLE_ROW_HEIGHT);
+    }
+    add_vertical_line(
+        content,
+        TABLE_X + table_layout.width,
+        row_top_y,
+        row_top_y - TABLE_ROW_HEIGHT,
+    );
+}
+
+fn add_cut_list_cell_text(
+    content: &mut String,
+    font_size: f64,
+    cell: PdfRect,
+    text: &str,
+    bold_hint: bool,
+    italic: bool,
+) {
+    let horizontal_padding = TABLE_CELL_HORIZONTAL_PADDING;
+    let text_width = (cell.width - horizontal_padding * 2.0).max(0.0);
+    let fitted_text = fit_cut_list_text(text, text_width, font_size);
+    let _ = writeln!(
+        content,
+        "q {:.2} {:.2} {:.2} {:.2} re W n",
+        cell.x + horizontal_padding,
+        cell.y,
+        text_width,
+        cell.height
+    );
+    if italic {
+        add_italic_text(
+            content,
+            font_size,
+            cell.x + horizontal_padding,
+            cell.y + 5.0,
+            &fitted_text,
+        );
+    } else {
+        add_text(
+            content,
+            font_size,
+            cell.x + horizontal_padding,
+            cell.y + 5.0,
+            &fitted_text,
+            bold_hint,
+        );
+    }
+    content.push_str("Q\n");
+}
+
+fn fit_cut_list_text(text: &str, available_width: f64, font_size: f64) -> String {
+    let character_width = font_size * 0.6;
+    let mut max_characters = 0;
+    let mut text_width = 0.0;
+    while text_width + character_width <= available_width + 0.01 {
+        max_characters += 1;
+        text_width += character_width;
+    }
+
+    let characters = text.chars().collect::<Vec<_>>();
+    if characters.len() <= max_characters {
+        return text.to_string();
+    }
+
+    if max_characters <= 3 {
+        return characters.into_iter().take(max_characters).collect();
+    }
+
+    let mut fitted = characters
+        .into_iter()
+        .take(max_characters - 3)
+        .collect::<String>();
+    fitted.push_str("...");
+    fitted
+}
+
+fn cut_list_row_values(
+    piece: &PlacedPiece,
+    display_label: &str,
+    unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+) -> [String; 8] {
+    [
+        format!("#{display_label}"),
+        part_name(piece, cut_labels),
         format_length(piece.rect.x, unit),
         format_length(piece.rect.y, unit),
         format_length(piece.rect.width, unit),
         format_length(piece.rect.length, unit),
         if piece.rotated { "rotated" } else { "fixed" }.to_string(),
         pattern_label(piece.pattern).to_string(),
-    ];
-
-    for (column, value) in CutListColumn::ALL.into_iter().zip(values) {
-        add_text(
-            content,
-            8.0,
-            column.text_x(),
-            row_top_y - 11.0,
-            &value,
-            false,
-        );
-        add_vertical_line(content, column.x(), row_top_y, row_top_y - TABLE_ROW_HEIGHT);
-    }
-    add_vertical_line(
-        content,
-        TABLE_X + TABLE_WIDTH,
-        row_top_y,
-        row_top_y - TABLE_ROW_HEIGHT,
-    );
+    ]
 }
 
 #[derive(Debug, Clone, Copy)]
-struct CutListColumn {
+struct CutListColumnDefinition {
     label: &'static str,
-    x: f64,
+    minimum_width: f64,
 }
 
-impl CutListColumn {
-    const ALL: [Self; 7] = [
-        Self {
-            label: "Cut",
-            x: TABLE_X,
-        },
-        Self {
-            label: "X",
-            x: TABLE_X + 140.0,
-        },
-        Self {
-            label: "Y",
-            x: TABLE_X + 220.0,
-        },
-        Self {
-            label: "Width",
-            x: TABLE_X + 300.0,
-        },
-        Self {
-            label: "Length",
-            x: TABLE_X + 400.0,
-        },
-        Self {
-            label: "Rotation",
-            x: TABLE_X + 500.0,
-        },
-        Self {
-            label: "Pattern",
-            x: TABLE_X + 610.0,
-        },
-    ];
-
+impl CutListColumnDefinition {
     fn label(self, unit: Unit) -> String {
         if matches!(self.label, "X" | "Y" | "Width" | "Length") {
             format!("{} ({})", self.label, unit_label(unit))
@@ -550,14 +833,122 @@ impl CutListColumn {
             self.label.to_string()
         }
     }
+}
 
-    fn text_x(self) -> f64 {
-        self.x + 6.0
+const CUT_LIST_COLUMN_DEFINITIONS: [CutListColumnDefinition; 8] = [
+    CutListColumnDefinition {
+        label: "H-V ID",
+        minimum_width: 52.0,
+    },
+    CutListColumnDefinition {
+        label: "Part",
+        minimum_width: 52.0,
+    },
+    CutListColumnDefinition {
+        label: "X",
+        minimum_width: 34.0,
+    },
+    CutListColumnDefinition {
+        label: "Y",
+        minimum_width: 34.0,
+    },
+    CutListColumnDefinition {
+        label: "Width",
+        minimum_width: 44.0,
+    },
+    CutListColumnDefinition {
+        label: "Length",
+        minimum_width: 44.0,
+    },
+    CutListColumnDefinition {
+        label: "Rotation",
+        minimum_width: 48.0,
+    },
+    CutListColumnDefinition {
+        label: "Pattern",
+        minimum_width: 58.0,
+    },
+];
+
+#[derive(Debug, Clone, PartialEq)]
+struct CutListColumn {
+    label: String,
+    x: f64,
+    width: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct CutListTableLayout {
+    columns: Vec<CutListColumn>,
+    width: f64,
+}
+
+fn cut_list_table_layout(
+    rows: &[CutListRow<'_>],
+    unit: Unit,
+    cut_labels: &HashMap<PieceId, &str>,
+) -> CutListTableLayout {
+    let mut desired_widths = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .map(|column| {
+            column.minimum_width.max(
+                estimated_pdf_text_width(&column.label(unit), 8.0)
+                    + TABLE_CELL_HORIZONTAL_PADDING * 2.0,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    for row in rows {
+        if let Some(values) = row.values(unit, cut_labels) {
+            for (width, value) in desired_widths.iter_mut().zip(values) {
+                *width = width.max(
+                    estimated_pdf_text_width(&value, 8.0) + TABLE_CELL_HORIZONTAL_PADDING * 2.0,
+                );
+            }
+        }
     }
 
-    fn x(self) -> f64 {
-        self.x
+    let minimum_total = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .map(|column| column.minimum_width)
+        .sum::<f64>();
+    let desired_growth = desired_widths
+        .iter()
+        .zip(CUT_LIST_COLUMN_DEFINITIONS)
+        .map(|(width, column)| width - column.minimum_width)
+        .sum::<f64>();
+    let available_growth = TABLE_WIDTH - minimum_total;
+    let growth_scale = if desired_growth > available_growth {
+        available_growth / desired_growth
+    } else {
+        1.0
+    };
+
+    let mut x = TABLE_X;
+    let columns = CUT_LIST_COLUMN_DEFINITIONS
+        .iter()
+        .zip(desired_widths)
+        .map(|(definition, desired_width)| {
+            let width = definition.minimum_width
+                + (desired_width - definition.minimum_width) * growth_scale;
+            let column = CutListColumn {
+                label: definition.label(unit),
+                x,
+                width,
+            };
+            x += width;
+            column
+        })
+        .collect();
+
+    CutListTableLayout {
+        columns,
+        width: x - TABLE_X,
     }
+}
+
+fn estimated_pdf_text_width(text: &str, font_size: f64) -> f64 {
+    text.chars().fold(0.0, |width, _| width + font_size * 0.6)
 }
 
 fn pattern_label(pattern: crate::domain::PatternDirection) -> &'static str {
@@ -754,8 +1145,22 @@ fn add_text(content: &mut String, size: f64, x: f64, y: f64, text: &str, bold_hi
     );
 }
 
-fn piece_label(piece: &PlacedPiece) -> String {
-    format!("Cut #{}-{}", piece.cut_id.0, piece.instance + 1)
+fn add_italic_text(content: &mut String, size: f64, x: f64, y: f64, text: &str) {
+    let _ = writeln!(
+        content,
+        "BT /F2 {:.1} Tf 0 Tr {:.2} {:.2} Td ({}) Tj ET",
+        size,
+        x,
+        y,
+        escape_pdf_text(text)
+    );
+}
+
+fn part_name(piece: &PlacedPiece, cut_labels: &HashMap<PieceId, &str>) -> String {
+    cut_labels
+        .get(&piece.cut_id)
+        .filter(|label| !label.trim().is_empty())
+        .map_or_else(String::new, |label| (*label).to_string())
 }
 
 fn escape_pdf_text(text: &str) -> String {
@@ -779,7 +1184,7 @@ fn escape_pdf_text(text: &str) -> String {
 mod tests {
     use super::*;
     use crate::{
-        domain::{LayoutKind, PatternDirection, PieceId},
+        domain::{CutPiece, LayoutKind, PatternDirection, PieceId},
         render::{Cut, CutOrientation, LeafKind, SliceNode},
     };
 
@@ -794,9 +1199,195 @@ mod tests {
         assert!(text.contains("/Type /Catalog"));
         assert!(text.contains("/Type /Page"));
         assert!(text.contains("Freecut solution - Sheet 1 - Stock #1"));
-        assert!(text.contains("Cut #7-1"));
+        assert!(text.contains("Cut #1-1"));
+        assert_eq!(text.matches("#1-1").count(), 2);
         assert!(text.contains("xref"));
         assert!(text.contains("%%EOF"));
+    }
+
+    #[test]
+    fn pdf_export_includes_part_labels_in_the_graphic_and_cut_list() {
+        let solution = sample_solution();
+        let cut_pieces = [CutPiece {
+            id: PieceId(7),
+            label: "Side panel".to_string(),
+            width: 30,
+            length: 40,
+            quantity: 1,
+            pattern: PatternDirection::None,
+            can_rotate: false,
+        }];
+
+        let pdf = export_solution_pdf_bytes_with_labels(&solution, Unit::Millimeter, &cut_pieces);
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert_eq!(text.matches("Side panel").count(), 2);
+        assert!(text.contains("H-V ID"));
+        assert!(text.contains("#1-1"));
+        assert!(
+            text.find("(H-V ID) Tj").expect("H-V ID header")
+                < text.find("(Part) Tj").expect("Part header")
+        );
+        assert!(!text.contains(r"Side panel \(Cut #1-1\)"));
+        assert!(text.contains("re W n"));
+    }
+
+    #[test]
+    fn pdf_export_lists_leftovers_as_italicized_distinct_rows() {
+        let mut solution = sample_solution();
+        let mm = |value| {
+            crate::measurement::length_from_whole_units(value, Unit::Millimeter)
+                .expect("fixture fits")
+        };
+        solution.sheets[0].waste = vec![
+            Rect {
+                x: mm(10),
+                y: mm(20),
+                width: mm(30),
+                length: mm(40),
+            },
+            Rect {
+                x: mm(50),
+                y: mm(60),
+                width: mm(70),
+                length: mm(80),
+            },
+        ];
+
+        let pdf = export_solution_pdf_bytes(&solution, Unit::Millimeter);
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert!(text.contains("(Leftovers) Tj"));
+        assert_eq!(text.matches("(1) Tj").count(), 1);
+        assert_eq!(text.matches("(2) Tj").count(), 1);
+        assert_eq!(text.matches("(Leftover 1) Tj").count(), 1);
+        assert_eq!(text.matches("(Leftover 2) Tj").count(), 1);
+        assert!(text.contains("BT /F2 8.0 Tf 0 Tr"));
+        assert!(text.contains("/BaseFont /Helvetica-Oblique"));
+        assert!(text.contains("(30) Tj"));
+        assert!(text.contains("(40) Tj"));
+    }
+
+    #[test]
+    fn pdf_cut_list_paginates_parts_and_leftovers_together() {
+        let mut solution = sample_solution_with_piece_count(25);
+        let width =
+            crate::measurement::length_from_whole_units(12, Unit::Millimeter).expect("fixture");
+        let length =
+            crate::measurement::length_from_whole_units(14, Unit::Millimeter).expect("fixture");
+        solution.sheets[0].waste.push(Rect {
+            x: 0,
+            y: 0,
+            width,
+            length,
+        });
+
+        let pdf = export_solution_pdf_bytes(&solution, Unit::Millimeter);
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert_eq!(text.matches("/Type /Page /Parent").count(), 3);
+        assert!(text.contains(r"25 total cut\(s\) - table page 1 of 2"));
+        assert!(text.contains(r"25 total cut\(s\) - table page 2 of 2"));
+        assert!(text.contains("(Leftovers) Tj"));
+        assert!(text.contains("(Leftover 1) Tj"));
+    }
+
+    #[test]
+    fn graphic_uses_shared_top_left_cut_id_and_part_name_layout() {
+        let solution = sample_solution();
+        let sheet = &solution.sheets[0];
+        let piece = &sheet.placed_pieces[0];
+        let cut_labels = HashMap::from([(PieceId(7), "Side panel")]);
+        let mut content = String::new();
+
+        add_piece_labels(
+            &mut content,
+            PdfRect {
+                x: 10.0,
+                y: 20.0,
+                width: 75.0,
+                height: 100.0,
+            },
+            sheet,
+            piece,
+            "1-1",
+            2.5,
+            &cut_labels,
+        );
+
+        assert!(content.contains("(Cut #1-1) Tj"));
+        assert!(content.contains("(Side panel) Tj"));
+        assert!(content.contains("10.00 20.00 75.00 100.00 re W n"));
+    }
+
+    #[test]
+    fn graphic_keeps_cut_id_visible_when_part_name_does_not_fit() {
+        let solution = sample_solution();
+        let mut sheet = solution.sheets[0].clone();
+        let mut piece = solution.sheets[0].placed_pieces[0].clone();
+        piece.instance = 2;
+        piece.rect.width = 1;
+        piece.rect.length = 1;
+        sheet.placed_pieces[0] = piece.clone();
+        let cut_labels = HashMap::from([(PieceId(7), "This is a very long part label")]);
+        let mut content = String::new();
+
+        add_piece_labels(
+            &mut content,
+            PdfRect {
+                x: 0.0,
+                y: 0.0,
+                width: 1.0,
+                height: 1.0,
+            },
+            &sheet,
+            &piece,
+            "1-1",
+            1.0,
+            &cut_labels,
+        );
+
+        assert!(content.contains("(Cut #1-1) Tj"));
+        assert!(content.contains("(This is) Tj"));
+        assert!(content.contains(".."));
+    }
+
+    #[test]
+    fn cut_list_column_widths_follow_content_and_fit_the_page() {
+        let solution = sample_solution();
+        let piece = &solution.sheets[0].placed_pieces[0];
+        let short_labels = HashMap::from([(PieceId(7), "Door")]);
+        let row = CutListRow::Part {
+            piece,
+            display_label: "1-1",
+        };
+        let short_layout =
+            cut_list_table_layout(std::slice::from_ref(&row), Unit::Millimeter, &short_labels);
+        let long_label = "A very long panel name ".repeat(20);
+        let long_labels = HashMap::from([(PieceId(7), long_label.as_str())]);
+        let long_layout = cut_list_table_layout(&[row], Unit::Millimeter, &long_labels);
+
+        assert!(short_layout.width < TABLE_WIDTH);
+        assert!(long_layout.columns[1].width > short_layout.columns[1].width);
+        assert!(long_layout.width <= TABLE_WIDTH);
+
+        for layout in [&short_layout, &long_layout] {
+            let mut next_x = TABLE_X;
+            for column in &layout.columns {
+                assert_eq!(column.x, next_x);
+                next_x += column.width;
+            }
+            assert_eq!(layout.width, next_x - TABLE_X);
+        }
+    }
+
+    #[test]
+    fn cut_list_text_is_shortened_to_fit_its_cell() {
+        let fitted = fit_cut_list_text("a very long part label", 60.0, 8.0);
+
+        assert!(fitted.ends_with("..."));
+        assert!(fitted.chars().count() <= 12);
+        assert_eq!(fit_cut_list_text("rotated", 60.0, 8.0), "rotated");
     }
 
     #[test]
@@ -852,7 +1443,9 @@ mod tests {
         assert!(text.contains("Width"));
         assert!(text.contains("Length"));
         assert!(text.contains("Rotation"));
-        assert!(text.contains("Cut #7-113"));
+        let display_labels = sheet_cut_display_labels(&solution.sheets[0]);
+        let last_label = display_labels.last().expect("piece display label");
+        assert!(text.contains(&format!("Cut #{last_label}")));
         assert!(!text.contains("... 85 more"));
         assert!(!text.contains("continued on following page"));
     }

@@ -30,6 +30,262 @@ pub struct PlacedPiece {
     pub rotated: bool,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PieceGraphicLabel {
+    pub text: String,
+    pub x: f64,
+    pub top: f64,
+    pub font_size: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LeftoverGraphicLabel {
+    pub rect: Rect,
+    pub number: usize,
+    pub text: String,
+    pub x: f64,
+    pub top: f64,
+    pub font_size: f64,
+}
+
+const SHEET_GRAPHIC_FONT_SIZE_RATIO: f64 = 0.0175;
+
+#[must_use]
+pub fn sheet_cut_display_labels(sheet: &SolutionSheet) -> Vec<String> {
+    let mut piece_order = (0..sheet.placed_pieces.len()).collect::<Vec<_>>();
+    piece_order.sort_by_key(|&index| {
+        let piece = &sheet.placed_pieces[index];
+        (
+            piece.rect.y,
+            piece.rect.x,
+            piece.rect.length,
+            piece.rect.width,
+            piece.cut_id.0,
+            piece.instance,
+        )
+    });
+
+    let mut labels = vec![String::new(); piece_order.len()];
+    let mut horizontal_number = 0;
+    let mut vertical_number = 0;
+    let mut previous_y = None;
+    for index in piece_order {
+        let y = sheet.placed_pieces[index].rect.y;
+        if previous_y != Some(y) {
+            horizontal_number += 1;
+            vertical_number = 1;
+            previous_y = Some(y);
+        } else {
+            vertical_number += 1;
+        }
+        labels[index] = format!("{horizontal_number}-{vertical_number}");
+    }
+
+    labels
+}
+
+impl PlacedPiece {
+    #[must_use]
+    pub fn cut_instance_label(&self) -> String {
+        format!("#{}-{}", self.cut_id.0, self.instance + 1)
+    }
+}
+
+#[must_use]
+pub fn piece_graphic_labels(
+    sheet: &SolutionSheet,
+    piece: &PlacedPiece,
+    display_label: &str,
+    part_name: Option<&str>,
+) -> Vec<PieceGraphicLabel> {
+    let width = f64::from(piece.rect.width);
+    let height = f64::from(piece.rect.length);
+    let target_font_size = f64::from(sheet.width.min(sheet.length)) * SHEET_GRAPHIC_FONT_SIZE_RATIO;
+    if width <= 0.0 || height <= 0.0 || target_font_size <= 0.0 {
+        return Vec::new();
+    }
+
+    let inset_x = width * 0.02;
+    let inset_y = height * 0.02;
+    let available_width = width - inset_x * 2.0;
+    let available_height = height - inset_y * 2.0;
+    let cut_id = format!("Cut #{display_label}");
+    let id_font_size = target_font_size
+        .min(available_height * 0.75)
+        .min(available_width / estimated_text_width(&cut_id, 1.0));
+    let id_height = id_font_size * 1.25;
+    let mut labels = vec![PieceGraphicLabel {
+        text: cut_id,
+        x: inset_x,
+        top: inset_y,
+        font_size: id_font_size,
+    }];
+
+    let Some(part_name) = part_name.filter(|name| !name.trim().is_empty()) else {
+        return labels;
+    };
+
+    let name_top = inset_y + id_height + id_font_size * 0.25;
+    let name_height = (height - inset_y - name_top).max(0.0);
+    let name_font_size = id_font_size;
+    let lines = wrap_graphic_label(part_name, available_width, name_height, name_font_size);
+    let line_height = name_font_size * 1.25;
+    let mut line_span = 0.0;
+    for _ in lines.iter().skip(1) {
+        line_span += line_height;
+    }
+    let first_line_top = name_top + (name_height - line_span - line_height) / 2.0;
+    let mut top = first_line_top;
+    for text in lines {
+        labels.push(PieceGraphicLabel {
+            text,
+            x: inset_x,
+            top,
+            font_size: name_font_size,
+        });
+        top += line_height;
+    }
+
+    labels
+}
+
+#[must_use]
+pub fn leftover_table_label(number: usize) -> String {
+    format!("Leftover {number}")
+}
+
+#[must_use]
+pub fn leftover_graphic_labels(sheet: &SolutionSheet) -> Vec<LeftoverGraphicLabel> {
+    let target_font_size = f64::from(sheet.width.min(sheet.length)) * SHEET_GRAPHIC_FONT_SIZE_RATIO;
+    sheet
+        .waste
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, rect)| {
+            let number = index + 1;
+            let text = number.to_string();
+            let width = f64::from(rect.width);
+            let height = f64::from(rect.length);
+            if width <= 0.0 || height <= 0.0 || target_font_size <= 0.0 {
+                return LeftoverGraphicLabel {
+                    rect,
+                    number,
+                    text,
+                    x: 0.0,
+                    top: 0.0,
+                    font_size: 0.0,
+                };
+            }
+
+            let inset_x = width * 0.02;
+            let inset_y = height * 0.02;
+            let available_width = width - inset_x * 2.0;
+            let available_height = height - inset_y * 2.0;
+            let font_size = target_font_size
+                .min(available_height * 0.75)
+                .min(available_width / estimated_text_width(&text, 1.0));
+
+            LeftoverGraphicLabel {
+                rect,
+                number,
+                text,
+                x: inset_x,
+                top: inset_y,
+                font_size,
+            }
+        })
+        .collect()
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    reason = "text lengths bound label layout capacities"
+)]
+fn wrap_graphic_label(
+    label: &str,
+    available_width: f64,
+    available_height: f64,
+    font_size: f64,
+) -> Vec<String> {
+    let character_width = font_size * 0.6;
+    let line_height = font_size * 1.25;
+    let text_length = label.chars().count();
+    let max_characters_per_line = ((available_width / character_width)
+        .floor()
+        .min(text_length as f64)) as usize;
+    let max_lines = ((available_height / line_height)
+        .floor()
+        .min(text_length as f64)) as usize;
+    if max_characters_per_line == 0 || max_lines == 0 {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    for word in label.split_whitespace() {
+        let word_length = word.chars().count();
+        let current_length = current_line.chars().count();
+        if !current_line.is_empty() && current_length + 1 + word_length <= max_characters_per_line {
+            current_line.push(' ');
+            current_line.push_str(word);
+            continue;
+        }
+
+        if !current_line.is_empty() {
+            lines.push(std::mem::take(&mut current_line));
+        }
+
+        let word_characters = word.chars().collect::<Vec<_>>();
+        let mut chunk = String::new();
+        let mut word_offset = 0;
+        while word_offset < word_characters.len() {
+            let remaining = word_characters.len() - word_offset;
+            let mut chunk_length = remaining.min(max_characters_per_line);
+            if max_characters_per_line > 1
+                && remaining > max_characters_per_line
+                && remaining - max_characters_per_line == 1
+            {
+                chunk_length -= 1;
+            }
+            for character in &word_characters[word_offset..word_offset + chunk_length] {
+                chunk.push(*character);
+            }
+            word_offset += chunk_length;
+            if word_offset < word_characters.len() {
+                lines.push(std::mem::take(&mut chunk));
+            }
+        }
+        current_line = chunk;
+    }
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
+        let ellipsis = ".".repeat((max_characters_per_line / 3).clamp(1, 3));
+        let last_line = lines.last_mut().expect("truncated lines are non-empty");
+        while last_line.chars().count() + ellipsis.len() > max_characters_per_line {
+            last_line.pop();
+        }
+        last_line.push_str(&ellipsis);
+    }
+
+    lines
+}
+
+fn estimated_text_width(text: &str, font_size: f64) -> f64 {
+    text.chars().fold(0.0, |width, _| width + font_size * 0.6)
+}
+
+#[must_use]
+pub fn solution_sheet_uses_kerf_base(sheet: &SolutionSheet, layout: LayoutKind) -> bool {
+    layout == LayoutKind::Nested
+        || (layout == LayoutKind::Guillotine && sheet.cutting_guide.is_some())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rect {
     pub x: u32,
@@ -332,6 +588,123 @@ mod tests {
             y: 0,
             width,
             length,
+        }
+    }
+
+    fn piece(width: u32, length: u32) -> PlacedPiece {
+        PlacedPiece {
+            cut_id: PieceId(7),
+            instance: 0,
+            rect: rect(width, length),
+            pattern: PatternDirection::None,
+            rotated: false,
+        }
+    }
+
+    #[test]
+    fn sheet_cut_display_labels_number_rows_then_slices_and_reset_per_sheet() {
+        let mut sheet = solution_sheet(200, 200);
+        let mut pieces = vec![piece(20, 20), piece(30, 30), piece(40, 40), piece(50, 50)];
+        pieces[0].rect.x = 100;
+        pieces[0].rect.y = 50;
+        pieces[1].rect.x = 0;
+        pieces[1].rect.y = 0;
+        pieces[2].rect.x = 50;
+        pieces[2].rect.y = 50;
+        pieces[3].rect.x = 0;
+        pieces[3].rect.y = 100;
+        sheet.placed_pieces = pieces;
+
+        assert_eq!(
+            sheet_cut_display_labels(&sheet),
+            ["2-2", "1-1", "2-1", "3-1"]
+        );
+
+        let mut next_sheet = solution_sheet(200, 200);
+        next_sheet.placed_pieces = vec![piece(20, 20)];
+        assert_eq!(sheet_cut_display_labels(&next_sheet), ["1-1"]);
+    }
+
+    #[test]
+    fn graphic_labels_use_sheet_cut_number_and_wrap_part_names_to_piece_bounds() {
+        let sheet = solution_sheet(200, 400);
+        let piece = piece(10, 100);
+        let labels = piece_graphic_labels(&sheet, &piece, "1-1", Some("Side panel label"));
+
+        assert_eq!(piece.cut_instance_label(), "#7-1");
+        assert_eq!(labels[0].text, "Cut #1-1");
+        assert_eq!(
+            labels
+                .iter()
+                .skip(1)
+                .map(|label| label.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Side", "panel", "label"]
+        );
+        assert!(labels.iter().all(|label| {
+            label.x >= 0.0
+                && label.top >= 0.0
+                && label.top + label.font_size * 1.25 <= f64::from(piece.rect.length)
+        }));
+    }
+
+    #[test]
+    fn graphic_label_sizes_are_consistent_unless_the_piece_requires_shrinking() {
+        let sheet = solution_sheet(100, 80);
+        let large_labels = piece_graphic_labels(&sheet, &piece(50, 40), "1-1", Some("Large"));
+        let small_labels = piece_graphic_labels(&sheet, &piece(30, 20), "1-2", Some("Small"));
+        assert_eq!(large_labels[0].font_size, small_labels[0].font_size);
+        assert_eq!(large_labels[0].font_size, large_labels[1].font_size);
+        assert_eq!(small_labels[0].font_size, small_labels[1].font_size);
+
+        let tiny_labels = piece_graphic_labels(&sheet, &piece(1, 1), "1-3", Some("Tiny"));
+        assert!(tiny_labels[0].font_size < large_labels[0].font_size);
+        assert_eq!(tiny_labels[0].font_size, tiny_labels[1].font_size);
+    }
+
+    #[test]
+    fn graphic_labels_truncate_long_names_to_fit_piece_bounds() {
+        let sheet = solution_sheet(200, 200);
+        let large_piece = piece(100, 100);
+        let labels = piece_graphic_labels(&sheet, &large_piece, "1-1", Some(&"A".repeat(2_000)));
+        assert!(labels.len() <= 21);
+        assert!(labels.last().unwrap().text.ends_with("..."));
+
+        let tiny_piece = piece(1, 1);
+        let labels = piece_graphic_labels(
+            &sheet,
+            &tiny_piece,
+            "1-2",
+            Some("This is a very long part label"),
+        );
+        assert_eq!(labels.len(), 3);
+        assert_eq!(labels[0].text, "Cut #1-2");
+        assert!(labels.last().unwrap().text.ends_with(".."));
+    }
+
+    #[test]
+    fn leftover_graphic_labels_are_numbered_and_fit_their_rectangles() {
+        let mut sheet = solution_sheet(200, 400);
+        sheet.waste = vec![rect(100, 80), rect(20, 10)];
+
+        let labels = leftover_graphic_labels(&sheet);
+
+        assert_eq!(labels.len(), 2);
+        assert_eq!(labels[0].number, 1);
+        assert_eq!(labels[0].text, "1");
+        assert_eq!(labels[0].rect, sheet.waste[0]);
+        assert_eq!(labels[1].number, 2);
+        assert_eq!(labels[1].text, "2");
+        assert_eq!(labels[1].rect, sheet.waste[1]);
+        for label in labels {
+            assert!(label.font_size > 0.0);
+            assert!(label.x >= 0.0);
+            assert!(label.top >= 0.0);
+            assert!(
+                label.x + estimated_text_width(&label.text, label.font_size)
+                    <= f64::from(label.rect.width)
+            );
+            assert!(label.top + label.font_size * 1.25 <= f64::from(label.rect.length));
         }
     }
 

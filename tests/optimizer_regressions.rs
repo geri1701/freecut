@@ -1,6 +1,7 @@
 use freecut::{
     domain::{
-        CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
+        CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, RotationMode,
+        StockPiece, Unit,
     },
     measurement::parse_length,
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
@@ -61,6 +62,8 @@ fn balanced_optimizer_places_gui_case_after_adding_one_more_small_cut() {
             unit: Unit::Millimeter,
             kerf_width: 0,
             layout: LayoutKind::Guillotine,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     };
 
@@ -116,6 +119,8 @@ fn thorough_guillotine_places_q71_side_strip_case() {
             unit: Unit::Millimeter,
             kerf_width: 1,
             layout: LayoutKind::Guillotine,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     };
 
@@ -266,6 +271,8 @@ fn nested_uses_pattern_wildcard_like_guillotine() {
             unit: Unit::Millimeter,
             kerf_width: 0,
             layout: LayoutKind::Nested,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     };
 
@@ -392,6 +399,8 @@ fn nested_project(stock_width: u32, stock_length: u32, cut_pieces: Vec<CutPiece>
             unit: Unit::Millimeter,
             kerf_width: 0,
             layout: LayoutKind::Nested,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     }
 }
@@ -416,6 +425,8 @@ fn rotation_disabled_regression_project(layout: LayoutKind, disabled_cut_id: u64
             unit: Unit::Millimeter,
             kerf_width: 2,
             layout,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     }
 }
@@ -445,6 +456,8 @@ fn fractional_kerf_project(layout: LayoutKind, kerf: &str) -> Project {
             unit: Unit::Inch,
             kerf_width: inch(kerf),
             layout,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     }
 }

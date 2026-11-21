@@ -37,7 +37,7 @@ The header must contain these logical columns:
 - `stock` rows create finite `domain::StockPiece` values with `quantity: Some(quantity)`.
 - Valid rows are imported even if other rows contain errors.
 - Errors are reported per row.
-- Imported pieces receive new `PieceId`s after the current maximum project ID.
+- Imported stock and cut pieces receive IDs independently, each starting after the highest existing ID of its own type.
 - Dimensions use the current project unit and accept whole numbers (`12`), decimals (`12.5`), fractions (`1/8`), and mixed fractions (`12 1/8`).
 - Decimal commas must be quoted in comma-separated CSV, for example `"12,5"`.
 

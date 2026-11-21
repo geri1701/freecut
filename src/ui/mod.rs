@@ -3,15 +3,17 @@
 //! UI code edits `domain::Project` and displays `render::Solution`, but does not own
 //! optimizer-specific data structures.
 
-use std::fmt::Write as _;
+use std::{collections::HashMap, fmt::Write as _};
 
 use eframe::egui;
+use rfd::FileDialog;
 
 use crate::{
     domain::{
-        CutPiece, CutSettings, LayoutKind, PatternDirection, PieceId, Project, StockPiece, Unit,
+        default_cut_pattern, effective_cut_pattern, CutPiece, CutSettings, LayoutKind,
+        PatternDirection, PieceId, Project, RotationMode, StockPiece, Unit,
     },
-    export::export_solution_pdf_file,
+    export::export_solution_pdf_file_with_labels,
     import::{import_project_csv_file, CsvImportResult},
     measurement::{
         format_length, length_as_f64, length_from_f64, length_from_whole_units, parse_length,
@@ -19,8 +21,10 @@ use crate::{
     optimizer::{BaselineOptimizer, OptimizeError, OptimizerConfig, OptimizerEffort},
     project_io::{load_project_file, save_project_file, ProjectDocument, PROJECT_FILE_EXTENSION},
     render::{
-        solution_sheet_kerf_geometries, CutKerfGeometry as CutPreviewGeometry,
-        CutKerfLine as CutPreviewLine, PlacedPiece, Rect as SolutionRect, Solution, SolutionSheet,
+        leftover_graphic_labels, piece_graphic_labels, sheet_cut_display_labels,
+        solution_sheet_kerf_geometries, solution_sheet_uses_kerf_base,
+        CutKerfGeometry as CutPreviewGeometry, CutKerfLine as CutPreviewLine, PlacedPiece,
+        Rect as SolutionRect, Solution, SolutionSheet,
     },
 };
 
@@ -65,6 +69,7 @@ struct FreecutAppState {
     language: UiLanguage,
     project_path: String,
     project_io_report: Option<String>,
+    reset_confirmation: bool,
     csv_import_path: String,
     csv_import_report: Option<String>,
     export_path: String,
@@ -84,6 +89,7 @@ impl Default for FreecutAppState {
             language: UiLanguage::default(),
             project_path: String::new(),
             project_io_report: None,
+            reset_confirmation: false,
             csv_import_path: String::new(),
             csv_import_report: None,
             export_path: String::new(),
@@ -391,6 +397,41 @@ impl UiTexts {
         }
     }
 
+    fn reset_project_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Reset project",
+            UiLanguage::German => "Projekt zurücksetzen",
+        }
+    }
+
+    fn reset_confirmation_title(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Start a new project?",
+            UiLanguage::German => "Neues Projekt starten?",
+        }
+    }
+
+    fn reset_confirmation_message(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Discard unsaved changes and start fresh?",
+            UiLanguage::German => "Nicht gespeicherte Änderungen verwerfen und neu beginnen?",
+        }
+    }
+
+    fn cancel_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Cancel",
+            UiLanguage::German => "Abbrechen",
+        }
+    }
+
+    fn confirm_reset_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Reset",
+            UiLanguage::German => "Zurücksetzen",
+        }
+    }
+
     fn native_project_file_hint(self) -> String {
         match self.language {
             UiLanguage::English => format!(
@@ -538,6 +579,13 @@ impl UiTexts {
         }
     }
 
+    fn delete_all_stock_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Delete all stock",
+            UiLanguage::German => "Alle Rohteile löschen",
+        }
+    }
+
     fn no_stock_pieces_label(self) -> &'static str {
         match self.language {
             UiLanguage::English => "No stock pieces yet.",
@@ -563,6 +611,13 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => "+ Cut",
             UiLanguage::German => "+ Zuschnitt",
+        }
+    }
+
+    fn delete_all_parts_button(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Delete all parts",
+            UiLanguage::German => "Alle Zuschnitte löschen",
         }
     }
 
@@ -626,6 +681,17 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => "rotatable",
             UiLanguage::German => "drehbar",
+        }
+    }
+
+    fn rotation_mode_label(self, mode: RotationMode) -> &'static str {
+        match (self.language, mode) {
+            (UiLanguage::English, RotationMode::None) => "None",
+            (UiLanguage::English, RotationMode::PerPart) => "Per part",
+            (UiLanguage::English, RotationMode::All) => "All",
+            (UiLanguage::German, RotationMode::None) => "Keine",
+            (UiLanguage::German, RotationMode::PerPart) => "Pro Teil",
+            (UiLanguage::German, RotationMode::All) => "Alle",
         }
     }
 
@@ -714,6 +780,13 @@ impl UiTexts {
         }
     }
 
+    fn open_pdf_after_export_label(self) -> &'static str {
+        match self.language {
+            UiLanguage::English => "Open PDF after export",
+            UiLanguage::German => "PDF nach dem Export öffnen",
+        }
+    }
+
     fn pdf_export_hint(self) -> &'static str {
         match self.language {
             UiLanguage::English => {
@@ -743,6 +816,24 @@ impl UiTexts {
         match self.language {
             UiLanguage::English => format!("PDF exported: {path}"),
             UiLanguage::German => format!("PDF exportiert: {path}"),
+        }
+    }
+
+    fn pdf_exported_and_opened_message(self, path: &str) -> String {
+        match self.language {
+            UiLanguage::English => format!("PDF exported and opened: {path}"),
+            UiLanguage::German => format!("PDF exportiert und geöffnet: {path}"),
+        }
+    }
+
+    fn pdf_export_open_failed_message(self, path: &str, error: impl std::fmt::Display) -> String {
+        match self.language {
+            UiLanguage::English => {
+                format!("PDF exported but could not be opened: {path}: {error}")
+            }
+            UiLanguage::German => {
+                format!("PDF exportiert, aber konnte nicht geöffnet werden: {path}: {error}")
+            }
         }
     }
 
@@ -953,6 +1044,8 @@ impl eframe::App for FreecutApp {
         egui::CentralPanel::default().show(context, |ui| {
             self.solution_panel(ui);
         });
+
+        self.reset_confirmation_window(context);
     }
 }
 
@@ -1021,6 +1114,20 @@ impl FreecutApp {
                 );
                 ui.end_row();
 
+                ui.label(texts.rotation_label());
+                let mode = &mut self.state.project.settings.rotation_mode;
+                let previous_mode = *mode;
+                let mut checked = previous_mode == RotationMode::All;
+                let response = ui.add(
+                    egui::Checkbox::new(&mut checked, texts.rotation_mode_label(previous_mode))
+                        .indeterminate(previous_mode == RotationMode::PerPart),
+                );
+                if response.changed() {
+                    *mode = previous_mode.next();
+                    changed = true;
+                }
+                ui.end_row();
+
                 ui.label(texts.optimizer_effort_label());
                 changed |= effort_combo(
                     ui,
@@ -1028,6 +1135,12 @@ impl FreecutApp {
                     &mut self.state.optimizer_effort,
                     texts,
                 );
+                ui.end_row();
+
+                ui.label(texts.open_pdf_after_export_label());
+                changed |= ui
+                    .checkbox(&mut self.state.project.settings.open_pdf_after_export, "")
+                    .changed();
                 ui.end_row();
 
                 ui.label(texts.language_label());
@@ -1056,16 +1169,53 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.project_path);
             if ui.button(texts.save_project_button()).clicked() {
-                save_project_from_state_path(&mut self.state);
+                save_project_from_ui(&mut self.state);
             }
             if ui.button(texts.load_project_button()).clicked() {
-                load_project_from_state_path(&mut self.state);
+                load_project_from_ui(&mut self.state);
             }
         });
+        if ui.button(texts.reset_project_button()).clicked() {
+            request_project_reset(&mut self.state);
+        }
         ui.small(texts.native_project_file_hint());
 
         if let Some(report) = &self.state.project_io_report {
             ui.label(report);
+        }
+    }
+
+    fn reset_confirmation_window(&mut self, context: &egui::Context) {
+        if !self.state.reset_confirmation {
+            return;
+        }
+
+        let texts = UiTexts::new(self.state.language);
+        let mut open = self.state.reset_confirmation;
+        let mut confirmed = false;
+        let mut canceled = false;
+        egui::Window::new(texts.reset_confirmation_title())
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut open)
+            .show(context, |ui| {
+                ui.label(texts.reset_confirmation_message());
+                ui.horizontal(|ui| {
+                    if ui.button(texts.cancel_button()).clicked() {
+                        canceled = true;
+                    }
+                    if ui.button(texts.confirm_reset_button()).clicked() {
+                        confirmed = true;
+                    }
+                });
+            });
+
+        if confirmed {
+            reset_project(&mut self.state);
+        } else if canceled {
+            self.state.reset_confirmation = false;
+        } else {
+            self.state.reset_confirmation = open;
         }
     }
 
@@ -1077,7 +1227,7 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.csv_import_path);
             if ui.button(texts.csv_import_button()).clicked() {
-                import_csv_from_state_path(&mut self.state);
+                import_csv_from_ui(&mut self.state);
             }
         });
         ui.small(texts.csv_import_hint());
@@ -1095,6 +1245,15 @@ impl FreecutApp {
             ui.heading(texts.stock_editor_heading());
             if ui.button(texts.add_stock_button()).clicked() {
                 add_default_stock_piece(&mut self.state);
+            }
+            if ui
+                .add_enabled(
+                    !self.state.project.stock_pieces.is_empty(),
+                    egui::Button::new(texts.delete_all_stock_button()),
+                )
+                .clicked()
+            {
+                delete_all_stock(&mut self.state);
             }
         });
 
@@ -1192,6 +1351,15 @@ impl FreecutApp {
             if ui.button(texts.add_cut_button()).clicked() {
                 add_default_cut_piece(&mut self.state);
             }
+            if ui
+                .add_enabled(
+                    !self.state.project.cut_pieces.is_empty(),
+                    egui::Button::new(texts.delete_all_parts_button()),
+                )
+                .clicked()
+            {
+                delete_all_parts(&mut self.state);
+            }
         });
 
         if self.state.project.cut_pieces.is_empty() {
@@ -1201,6 +1369,7 @@ impl FreecutApp {
 
         let mut remove_index = None;
         let mut any_changed = false;
+        let mut rotation_toggle_index = None;
 
         egui::Grid::new("cut_piece_editor")
             .striped(true)
@@ -1246,10 +1415,24 @@ impl FreecutApp {
                     changed |= ui
                         .add(quantity_drag_value(&mut cut.quantity).prefix(texts.quantity_prefix()))
                         .changed();
-                    changed |= pattern_combo(ui, ("cut_pattern", index), &mut cut.pattern, texts);
-                    changed |= ui
-                        .checkbox(&mut cut.can_rotate, texts.rotatable_label())
-                        .changed();
+                    let mut pattern = effective_cut_pattern(
+                        cut.pattern,
+                        cut.can_rotate,
+                        self.state.project.settings.rotation_mode,
+                    );
+                    if pattern_combo(ui, ("cut_pattern", index), &mut pattern, texts) {
+                        cut.pattern = pattern;
+                        changed = true;
+                    }
+                    let rotation_mode = self.state.project.settings.rotation_mode;
+                    let mut rotatable = rotation_mode.allows_rotation(cut.can_rotate);
+                    if ui
+                        .checkbox(&mut rotatable, texts.rotatable_label())
+                        .changed()
+                    {
+                        rotation_toggle_index = Some(index);
+                        changed = true;
+                    }
 
                     validation_label(ui, cut_validation_message(cut, texts));
 
@@ -1269,7 +1452,11 @@ impl FreecutApp {
             });
 
         if any_changed {
-            mark_dirty(&mut self.state);
+            if let Some(index) = rotation_toggle_index {
+                toggle_cut_rotation_from_ui(&mut self.state, index);
+            } else {
+                mark_dirty(&mut self.state);
+            }
         }
 
         if let Some(index) = remove_index {
@@ -1331,12 +1518,20 @@ impl FreecutApp {
                 }
 
                 let highlighted_cut_id = selected_cut_id(&self.state);
+                let cut_labels = self
+                    .state
+                    .project
+                    .cut_pieces
+                    .iter()
+                    .map(|piece| (piece.id, piece.label.as_str()))
+                    .collect::<HashMap<_, _>>();
                 selected_piece_details(ui, &self.state, texts);
                 let mut pending_graphic_selection = None;
                 let sheet_view_max_height = dynamic_sheet_view_max_height(ui.available_height());
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for (index, sheet) in solution.sheets.iter().enumerate() {
+                        let display_labels = sheet_cut_display_labels(sheet);
                         let selected = self.state.selection.sheet_index == Some(index);
                         ui.horizontal(|ui| {
                             if ui
@@ -1364,12 +1559,16 @@ impl FreecutApp {
 
                         if let Some(piece_index) = draw_solution_sheet(
                             ui,
-                            sheet,
                             selected,
                             highlighted_cut_id,
                             sheet_view_max_height,
                             texts,
-                            solution.layout,
+                            SolutionGraphicContext {
+                                sheet,
+                                layout: solution.layout,
+                                cut_labels: &cut_labels,
+                                display_labels: &display_labels,
+                            },
                         ) {
                             pending_graphic_selection = Some((index, piece_index));
                         }
@@ -1395,7 +1594,7 @@ impl FreecutApp {
             ui.label(texts.path_label());
             ui.text_edit_singleline(&mut self.state.export_path);
             if ui.button(texts.pdf_export_button()).clicked() {
-                export_solution_from_state_path(&mut self.state);
+                export_solution_from_ui(&mut self.state);
             }
         });
         ui.small(texts.pdf_export_hint());
@@ -1435,15 +1634,32 @@ struct SheetViewBounds {
     scale: f32,
 }
 
+#[derive(Clone, Copy)]
+struct SolutionGraphicContext<'a> {
+    sheet: &'a SolutionSheet,
+    layout: LayoutKind,
+    cut_labels: &'a HashMap<PieceId, &'a str>,
+    display_labels: &'a [String],
+}
+
+#[derive(Clone, Copy)]
+struct PlacedPieceGraphicContext<'a> {
+    sheet: &'a SolutionSheet,
+    sheet_rect: egui::Rect,
+    scale: f32,
+    display_label: &'a str,
+    part_name: Option<&'a str>,
+}
+
 fn draw_solution_sheet(
     ui: &mut egui::Ui,
-    sheet: &SolutionSheet,
     selected: bool,
     highlighted_cut_id: Option<PieceId>,
     max_height: f32,
     texts: UiTexts,
-    layout: LayoutKind,
+    context: SolutionGraphicContext<'_>,
 ) -> Option<usize> {
+    let sheet = context.sheet;
     let Some(bounds) = sheet_view_bounds(sheet, ui.available_width(), max_height) else {
         ui.colored_label(
             ui.visuals().error_fg_color,
@@ -1457,12 +1673,11 @@ fn draw_solution_sheet(
         response.rect.min + egui::vec2(SHEET_VIEW_PADDING, SHEET_VIEW_PADDING),
         bounds.sheet_size,
     );
-
     painter.rect_filled(response.rect, 0.0, SHEET_VIEW_BACKGROUND_COLOR);
-    painter.rect_filled(sheet_rect, 0.0, sheet_surface_color(sheet, layout));
+    painter.rect_filled(sheet_rect, 0.0, sheet_surface_color(sheet, context.layout));
 
-    let draw_neutral_waste_boundaries = should_draw_neutral_waste_boundaries(sheet, layout);
-    let draw_piece_boundaries = should_draw_piece_boundaries(sheet, layout);
+    let draw_neutral_waste_boundaries = should_draw_neutral_waste_boundaries(sheet, context.layout);
+    let draw_piece_boundaries = should_draw_piece_boundaries(sheet, context.layout);
     for waste in &sheet.waste {
         let waste_rect = solution_rect_to_screen_rect(*waste, sheet_rect, bounds.scale);
         painter.rect_filled(waste_rect, 0.0, SHEET_WASTE_COLOR);
@@ -1476,18 +1691,40 @@ fn draw_solution_sheet(
         }
     }
 
-    for piece in &sheet.placed_pieces {
-        draw_placed_piece(
-            &painter,
-            piece,
-            sheet_rect,
-            bounds.scale,
-            highlighted_cut_id == Some(piece.cut_id),
-            draw_piece_boundaries,
+    for label in leftover_graphic_labels(sheet) {
+        if label.font_size <= 0.0 {
+            continue;
+        }
+        let leftover_rect = solution_rect_to_screen_rect(label.rect, sheet_rect, bounds.scale);
+        painter.with_clip_rect(leftover_rect).text(
+            egui::pos2(
+                leftover_rect.left() + graphic_label_screen_value(label.x, bounds.scale),
+                leftover_rect.top() + graphic_label_screen_value(label.top, bounds.scale),
+            ),
+            egui::Align2::LEFT_TOP,
+            label.text,
+            egui::FontId::proportional(graphic_label_screen_value(label.font_size, bounds.scale)),
+            PIECE_LABEL_COLOR,
         );
     }
 
-    draw_cut_kerf_preview(&painter, sheet, sheet_rect, bounds.scale, layout);
+    for (piece_index, piece) in sheet.placed_pieces.iter().enumerate() {
+        draw_placed_piece(
+            &painter,
+            piece,
+            highlighted_cut_id == Some(piece.cut_id),
+            draw_piece_boundaries,
+            PlacedPieceGraphicContext {
+                sheet,
+                sheet_rect,
+                scale: bounds.scale,
+                display_label: &context.display_labels[piece_index],
+                part_name: context.cut_labels.get(&piece.cut_id).copied(),
+            },
+        );
+    }
+
+    draw_cut_kerf_preview(&painter, sheet, sheet_rect, bounds.scale, context.layout);
 
     let border_color = if selected {
         egui::Color32::from_rgb(80, 130, 240)
@@ -1520,27 +1757,21 @@ fn should_draw_piece_boundaries(sheet: &SolutionSheet, layout: LayoutKind) -> bo
 }
 
 fn sheet_surface_color(sheet: &SolutionSheet, layout: LayoutKind) -> egui::Color32 {
-    if should_paint_uncovered_kerf_base(sheet, layout) {
+    if solution_sheet_uses_kerf_base(sheet, layout) {
         CUT_KERF_COLOR
     } else {
         SHEET_SURFACE_COLOR
     }
 }
 
-fn should_paint_uncovered_kerf_base(sheet: &SolutionSheet, layout: LayoutKind) -> bool {
-    layout == LayoutKind::Nested
-        || (layout == LayoutKind::Guillotine && sheet.cutting_guide.is_some())
-}
-
 fn draw_placed_piece(
     painter: &egui::Painter,
     piece: &PlacedPiece,
-    sheet_rect: egui::Rect,
-    scale: f32,
     highlighted: bool,
     draw_boundary: bool,
+    context: PlacedPieceGraphicContext<'_>,
 ) {
-    let piece_rect = solution_rect_to_screen_rect(piece.rect, sheet_rect, scale);
+    let piece_rect = solution_rect_to_screen_rect(piece.rect, context.sheet_rect, context.scale);
     painter.rect_filled(piece_rect, 0.0, piece_fill_color(piece, highlighted));
     if draw_boundary {
         painter.rect_stroke(
@@ -1554,13 +1785,32 @@ fn draw_placed_piece(
             egui::StrokeKind::Inside,
         );
     }
-    painter.text(
-        piece_rect.center(),
-        egui::Align2::CENTER_CENTER,
-        piece_label(piece),
-        egui::FontId::monospace(11.0),
-        PIECE_LABEL_COLOR,
-    );
+    let clipped_painter = painter.with_clip_rect(piece_rect);
+    for label in piece_graphic_labels(
+        context.sheet,
+        piece,
+        context.display_label,
+        context.part_name,
+    ) {
+        clipped_painter.text(
+            egui::pos2(
+                piece_rect.left() + graphic_label_screen_value(label.x, context.scale),
+                piece_rect.top() + graphic_label_screen_value(label.top, context.scale),
+            ),
+            egui::Align2::LEFT_TOP,
+            label.text,
+            egui::FontId::proportional(graphic_label_screen_value(label.font_size, context.scale)),
+            PIECE_LABEL_COLOR,
+        );
+    }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "egui uses f32 display coordinates"
+)]
+fn graphic_label_screen_value(value: f64, scale: f32) -> f32 {
+    (value * f64::from(scale)) as f32
 }
 
 fn draw_cut_kerf_preview(
@@ -1721,10 +1971,6 @@ fn hit_test_placed_piece(
         .map(|(index, _)| index)
 }
 
-fn piece_label(piece: &PlacedPiece) -> String {
-    format!("#{}-{}", piece.cut_id.0, piece.instance + 1)
-}
-
 fn piece_fill_color(piece: &PlacedPiece, highlighted: bool) -> egui::Color32 {
     if highlighted {
         PIECE_HIGHLIGHT_FILL_COLOR
@@ -1747,10 +1993,11 @@ fn waste_boundary_stroke() -> egui::Stroke {
     egui::Stroke::new(SOLUTION_BOUNDARY_STROKE_WIDTH, SHEET_WASTE_STROKE_COLOR)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct SelectedPieceDetails<'a> {
     sheet_index: usize,
     piece_index: usize,
+    display_label: String,
     placed_piece: &'a PlacedPiece,
     cut_piece: Option<&'a CutPiece>,
 }
@@ -1793,7 +2040,12 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
                     ui.label(format!(
                         "{} · {}",
                         texts.pattern_label(cut.pattern),
-                        if cut.can_rotate {
+                        if state
+                            .project
+                            .settings
+                            .rotation_mode
+                            .allows_rotation(cut.can_rotate)
+                        {
                             texts.rotatable_label()
                         } else {
                             texts.fixed_rotation_label()
@@ -1814,12 +2066,12 @@ fn selected_piece_details(ui: &mut egui::Ui, state: &FreecutAppState, texts: UiT
             .show(ui, |ui| {
                 ui.label(texts.solution_heading());
                 ui.label(format!(
-                    "{} {} · {} {} · {}",
+                    "{} {} · {} {} · #{}",
                     texts.sheet_label(),
                     details.sheet_index + 1,
                     texts.solution_piece_label(),
                     details.piece_index + 1,
-                    piece_label(details.placed_piece)
+                    details.display_label
                 ));
                 ui.end_row();
 
@@ -1857,11 +2109,9 @@ fn selected_placed_piece_details(state: &FreecutAppState) -> Option<SelectedPiec
     let solution = state.solution.as_ref()?;
     let sheet_index = state.selection.sheet_index?;
     let piece_index = state.selection.placed_piece_index?;
-    let placed_piece = solution
-        .sheets
-        .get(sheet_index)?
-        .placed_pieces
-        .get(piece_index)?;
+    let sheet = solution.sheets.get(sheet_index)?;
+    let display_label = sheet_cut_display_labels(sheet).get(piece_index)?.clone();
+    let placed_piece = sheet.placed_pieces.get(piece_index)?;
     let cut_piece = state
         .project
         .cut_pieces
@@ -1871,6 +2121,7 @@ fn selected_placed_piece_details(state: &FreecutAppState) -> Option<SelectedPiec
     Some(SelectedPieceDetails {
         sheet_index,
         piece_index,
+        display_label,
         placed_piece,
         cut_piece,
     })
@@ -1919,6 +2170,80 @@ fn select_cut_input_row(state: &mut FreecutAppState, index: usize) {
         state.selection.stock_index = None;
         state.selection.placed_piece_index = None;
     }
+}
+
+fn request_project_reset(state: &mut FreecutAppState) {
+    if state.dirty {
+        state.reset_confirmation = true;
+    } else {
+        reset_project(state);
+    }
+}
+
+fn reset_project(state: &mut FreecutAppState) {
+    let language = state.language;
+    let font_size = state.font_size;
+    *state = FreecutAppState::default();
+    state.language = language;
+    state.font_size = font_size;
+}
+
+fn save_project_from_ui(state: &mut FreecutAppState) {
+    if state.project_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("Freecut project", &[PROJECT_FILE_EXTENSION])
+            .set_file_name(format!("project.{PROJECT_FILE_EXTENSION}"))
+            .save_file()
+        else {
+            return;
+        };
+        state.project_path = path.to_string_lossy().into_owned();
+    }
+
+    save_project_from_state_path(state);
+}
+
+fn load_project_from_ui(state: &mut FreecutAppState) {
+    if state.project_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("Freecut project", &[PROJECT_FILE_EXTENSION])
+            .pick_file()
+        else {
+            return;
+        };
+        state.project_path = path.to_string_lossy().into_owned();
+    }
+
+    load_project_from_state_path(state);
+}
+
+fn import_csv_from_ui(state: &mut FreecutAppState) {
+    if state.csv_import_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("CSV files", &["csv"])
+            .pick_file()
+        else {
+            return;
+        };
+        state.csv_import_path = path.to_string_lossy().into_owned();
+    }
+
+    import_csv_from_state_path(state);
+}
+
+fn export_solution_from_ui(state: &mut FreecutAppState) {
+    if state.export_path.trim().is_empty() {
+        let Some(path) = FileDialog::new()
+            .add_filter("PDF files", &["pdf"])
+            .set_file_name("solution.pdf")
+            .save_file()
+        else {
+            return;
+        };
+        state.export_path = path.to_string_lossy().into_owned();
+    }
+
+    export_solution_from_state_path(state);
 }
 
 fn save_project_from_state_path(state: &mut FreecutAppState) {
@@ -1977,6 +2302,13 @@ fn load_project_from_state_path(state: &mut FreecutAppState) {
 }
 
 fn export_solution_from_state_path(state: &mut FreecutAppState) {
+    export_solution_from_state_path_with_opener(state, open_pdf_document);
+}
+
+fn export_solution_from_state_path_with_opener(
+    state: &mut FreecutAppState,
+    opener: impl FnOnce(&str) -> std::io::Result<()>,
+) {
     let texts = UiTexts::new(state.language);
     let path = state.export_path.trim();
     if path.is_empty() {
@@ -1993,11 +2325,29 @@ fn export_solution_from_state_path(state: &mut FreecutAppState) {
         return;
     };
 
-    match export_solution_pdf_file(path, solution, state.project.settings.unit) {
+    match export_solution_pdf_file_with_labels(
+        path,
+        solution,
+        state.project.settings.unit,
+        &state.project.cut_pieces,
+    ) {
         Ok(()) => {
-            let message = texts.pdf_exported_message(path);
-            state.export_report = Some(message);
-            state.error_message = None;
+            if state.project.settings.open_pdf_after_export {
+                match opener(path) {
+                    Ok(()) => {
+                        state.export_report = Some(texts.pdf_exported_and_opened_message(path));
+                        state.error_message = None;
+                    }
+                    Err(error) => {
+                        let message = texts.pdf_export_open_failed_message(path, error);
+                        state.export_report = Some(message.clone());
+                        state.error_message = Some(message);
+                    }
+                }
+            } else {
+                state.export_report = Some(texts.pdf_exported_message(path));
+                state.error_message = None;
+            }
         }
         Err(error) => {
             let message = texts.pdf_export_failed_message(error);
@@ -2005,6 +2355,39 @@ fn export_solution_from_state_path(state: &mut FreecutAppState) {
             state.error_message = Some(message);
         }
     }
+}
+
+fn open_pdf_document(path: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        spawn_pdf_opener("xdg-open", path)
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        spawn_pdf_opener("open", path)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        spawn_pdf_opener("explorer.exe", path)
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        let _ = path;
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "opening PDFs is not supported on this platform",
+        ))
+    }
+}
+
+fn spawn_pdf_opener(program: &str, path: &str) -> std::io::Result<()> {
+    std::process::Command::new(program)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
 }
 
 fn import_csv_from_state_path(state: &mut FreecutAppState) {
@@ -2019,7 +2402,8 @@ fn import_csv_from_state_path(state: &mut FreecutAppState) {
 
     match import_project_csv_file(
         path,
-        next_piece_id(&state.project).0,
+        next_stock_piece_id(&state.project).0,
+        next_cut_piece_id(&state.project).0,
         state.project.settings.unit,
     ) {
         Ok(result) => apply_csv_import_result(state, result),
@@ -2093,7 +2477,7 @@ fn optimize_current_project(state: &mut FreecutAppState) {
 }
 
 fn add_default_stock_piece(state: &mut FreecutAppState) {
-    let id = next_piece_id(&state.project);
+    let id = next_stock_piece_id(&state.project);
     state.project.stock_pieces.push(StockPiece {
         id,
         width: length_from_whole_units(2440, Unit::Millimeter)
@@ -2108,7 +2492,8 @@ fn add_default_stock_piece(state: &mut FreecutAppState) {
 }
 
 fn add_default_cut_piece(state: &mut FreecutAppState) {
-    let id = next_piece_id(&state.project);
+    let id = next_cut_piece_id(&state.project);
+    let can_rotate = true;
     state.project.cut_pieces.push(CutPiece {
         id,
         label: format!("cut-{}", id.0),
@@ -2117,8 +2502,8 @@ fn add_default_cut_piece(state: &mut FreecutAppState) {
         length: length_from_whole_units(100, Unit::Millimeter)
             .expect("default cut length fits geometry coordinates"),
         quantity: 1,
-        pattern: PatternDirection::None,
-        can_rotate: true,
+        pattern: default_cut_pattern(can_rotate),
+        can_rotate,
     });
     select_cut_input_row(state, state.project.cut_pieces.len() - 1);
     mark_dirty(state);
@@ -2133,11 +2518,52 @@ fn remove_stock_piece(state: &mut FreecutAppState, index: usize) {
     }
 }
 
+fn toggle_cut_rotation_from_ui(state: &mut FreecutAppState, index: usize) {
+    if index >= state.project.cut_pieces.len() {
+        return;
+    }
+
+    let mode = state.project.settings.rotation_mode;
+    if mode != RotationMode::PerPart {
+        let global_rotation = mode == RotationMode::All;
+        for cut in &mut state.project.cut_pieces {
+            cut.pattern = effective_cut_pattern(cut.pattern, cut.can_rotate, mode);
+            cut.can_rotate = global_rotation;
+        }
+        state.project.settings.rotation_mode = RotationMode::PerPart;
+    }
+
+    let cut = &mut state.project.cut_pieces[index];
+    let previous_rotation = cut.can_rotate;
+    cut.can_rotate = !cut.can_rotate;
+    if cut.pattern == default_cut_pattern(previous_rotation) {
+        cut.pattern = default_cut_pattern(cut.can_rotate);
+    }
+
+    mark_dirty(state);
+}
+
+fn delete_all_stock(state: &mut FreecutAppState) {
+    if !state.project.stock_pieces.is_empty() {
+        state.project.stock_pieces.clear();
+        state.selection.stock_index = None;
+        mark_dirty(state);
+    }
+}
+
 fn remove_cut_piece(state: &mut FreecutAppState, index: usize) {
     if index < state.project.cut_pieces.len() {
         state.project.cut_pieces.remove(index);
         state.selection.cut_index = previous_valid_index(state.project.cut_pieces.len(), index);
         state.selection.placed_piece_index = None;
+        mark_dirty(state);
+    }
+}
+
+fn delete_all_parts(state: &mut FreecutAppState) {
+    if !state.project.cut_pieces.is_empty() {
+        state.project.cut_pieces.clear();
+        state.selection.cut_index = None;
         mark_dirty(state);
     }
 }
@@ -2170,21 +2596,28 @@ fn is_validation_error_message(message: &str) -> bool {
         || message.starts_with(VALIDATION_ERROR_PREFIX_DE)
 }
 
-fn next_piece_id(project: &Project) -> PieceId {
-    let max_stock_id = project
-        .stock_pieces
-        .iter()
-        .map(|piece| piece.id.0)
-        .max()
-        .unwrap_or(0);
-    let max_cut_id = project
-        .cut_pieces
-        .iter()
-        .map(|piece| piece.id.0)
-        .max()
-        .unwrap_or(0);
+fn next_stock_piece_id(project: &Project) -> PieceId {
+    PieceId(
+        project
+            .stock_pieces
+            .iter()
+            .map(|piece| piece.id.0)
+            .max()
+            .unwrap_or(0)
+            + 1,
+    )
+}
 
-    PieceId(max_stock_id.max(max_cut_id) + 1)
+fn next_cut_piece_id(project: &Project) -> PieceId {
+    PieceId(
+        project
+            .cut_pieces
+            .iter()
+            .map(|piece| piece.id.0)
+            .max()
+            .unwrap_or(0)
+            + 1,
+    )
 }
 
 fn dimension_drag_value(value: &mut u32, unit: Unit) -> egui::DragValue<'_> {
@@ -2501,9 +2934,11 @@ fn empty_project() -> Project {
         cut_pieces: Vec::new(),
         settings: CutSettings {
             unit: Unit::Millimeter,
-            kerf_width: length_from_whole_units(3, Unit::Millimeter)
+            kerf_width: length_from_whole_units(4, Unit::Millimeter)
                 .expect("default kerf fits geometry coordinates"),
             layout: LayoutKind::Guillotine,
+            rotation_mode: RotationMode::PerPart,
+            open_pdf_after_export: false,
         },
     }
 }
@@ -2600,18 +3035,83 @@ mod tests {
         assert_eq!(state.project.settings.layout, LayoutKind::Guillotine);
         assert_eq!(
             state.project.settings.kerf_width,
-            length_from_whole_units(3, Unit::Millimeter).expect("default kerf fits")
+            length_from_whole_units(4, Unit::Millimeter).expect("default kerf fits")
         );
-        assert_eq!(state.optimizer_effort, OptimizerEffort::Fast);
+        assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
         assert_eq!(state.font_size, UiFontSize::Normal);
         assert_eq!(state.language, UiLanguage::English);
         assert!(state.project_path.is_empty());
         assert!(state.project_io_report.is_none());
         assert!(state.export_path.is_empty());
         assert!(state.export_report.is_none());
+        assert!(!state.project.settings.open_pdf_after_export);
         assert!(state.solution.is_none());
         assert!(state.error_message.is_none());
         assert!(!state.dirty);
+    }
+
+    #[test]
+    fn reset_project_starts_fresh_and_preserves_ui_preferences() {
+        let mut state = FreecutAppState {
+            language: UiLanguage::German,
+            font_size: UiFontSize::Large,
+            ..FreecutAppState::default()
+        };
+        state.project.settings.open_pdf_after_export = true;
+        state.project.name = "Existing project".to_string();
+        state.project_path = "existing.freecut.json".to_string();
+        state.csv_import_path = "cuts.csv".to_string();
+        state.csv_import_report = Some("Imported".to_string());
+        state.export_path = "solution.pdf".to_string();
+        state.export_report = Some("Exported".to_string());
+        state.dirty = true;
+
+        reset_project(&mut state);
+
+        assert_eq!(state.project, empty_project());
+        assert_eq!(state.optimizer_effort, OptimizerEffort::Thorough);
+        assert_eq!(state.language, UiLanguage::German);
+        assert_eq!(state.font_size, UiFontSize::Large);
+        assert!(!state.project.settings.open_pdf_after_export);
+        assert!(state.project_path.is_empty());
+        assert!(state.project_io_report.is_none());
+        assert!(state.csv_import_path.is_empty());
+        assert!(state.csv_import_report.is_none());
+        assert!(state.export_path.is_empty());
+        assert!(state.export_report.is_none());
+        assert!(state.solution.is_none());
+        assert!(state.error_message.is_none());
+        assert!(!state.dirty);
+        assert!(!state.reset_confirmation);
+    }
+
+    #[test]
+    fn reset_project_restarts_stock_and_cut_id_sequences() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+
+        reset_project(&mut state);
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+
+        assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
+    }
+
+    #[test]
+    fn reset_request_confirms_before_discarding_dirty_project() {
+        let mut state = FreecutAppState::default();
+        state.project.name = "Unsaved project".to_string();
+        state.dirty = true;
+
+        request_project_reset(&mut state);
+
+        assert!(state.reset_confirmation);
+        assert_eq!(state.project.name, "Unsaved project");
+        assert!(state.dirty);
     }
 
     #[test]
@@ -2688,19 +3188,64 @@ mod tests {
     }
 
     #[test]
-    fn adding_rows_assigns_unique_ids_and_marks_state_dirty() {
+    fn stock_and_cut_ids_start_independently_and_mark_state_dirty() {
         let mut state = FreecutAppState::default();
 
         add_default_stock_piece(&mut state);
         add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_stock_piece(&mut state);
 
         assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.stock_pieces[1].id, PieceId(2));
         assert_eq!(state.project.stock_pieces[0].quantity, Some(1));
-        assert_eq!(state.project.cut_pieces[0].id, PieceId(2));
-        assert_eq!(state.project.cut_pieces[0].label, "cut-2");
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[1].id, PieceId(2));
+        assert_eq!(state.project.cut_pieces[0].label, "cut-1");
         assert!(state.project.cut_pieces[0].can_rotate);
+        assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
         assert!(state.dirty);
         assert!(state.solution.is_none());
+    }
+
+    #[test]
+    fn deleting_all_stock_preserves_cuts_and_invalidates_solution_state() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.selection.stock_index = Some(0);
+        state.selection.cut_index = Some(0);
+        state.selection.placed_piece_index = Some(0);
+        state.dirty = false;
+
+        delete_all_stock(&mut state);
+
+        assert!(state.project.stock_pieces.is_empty());
+        assert_eq!(state.project.cut_pieces.len(), 1);
+        assert_eq!(state.selection.stock_index, None);
+        assert_eq!(state.selection.cut_index, Some(0));
+        assert_eq!(state.selection.placed_piece_index, None);
+        assert!(state.dirty);
+    }
+
+    #[test]
+    fn deleting_all_parts_preserves_stock_and_invalidates_solution_state() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.selection.stock_index = Some(0);
+        state.selection.cut_index = Some(0);
+        state.selection.placed_piece_index = Some(0);
+        state.dirty = false;
+
+        delete_all_parts(&mut state);
+
+        assert_eq!(state.project.stock_pieces.len(), 1);
+        assert!(state.project.cut_pieces.is_empty());
+        assert_eq!(state.selection.stock_index, Some(0));
+        assert_eq!(state.selection.cut_index, None);
+        assert_eq!(state.selection.placed_piece_index, None);
+        assert!(state.dirty);
     }
 
     #[test]
@@ -2805,6 +3350,75 @@ mod tests {
     }
 
     #[test]
+    fn rotation_click_from_all_enables_per_part_mode_and_toggles_only_clicked_cut() {
+        let mut state = FreecutAppState::default();
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.project.settings.rotation_mode = RotationMode::All;
+        state.project.cut_pieces[0].can_rotate = false;
+        state.project.cut_pieces[0].pattern = PatternDirection::ParallelToLength;
+        state.project.cut_pieces[1].can_rotate = false;
+        state.project.cut_pieces[1].pattern = PatternDirection::ParallelToWidth;
+        state.dirty = false;
+
+        toggle_cut_rotation_from_ui(&mut state, 1);
+
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
+        assert_eq!(
+            state
+                .project
+                .cut_pieces
+                .iter()
+                .map(|cut| cut.can_rotate)
+                .collect::<Vec<_>>(),
+            [true, false, true]
+        );
+        assert_eq!(state.project.cut_pieces[0].pattern, PatternDirection::None);
+        assert_eq!(
+            state.project.cut_pieces[1].pattern,
+            PatternDirection::ParallelToWidth
+        );
+        assert_eq!(state.project.cut_pieces[2].pattern, PatternDirection::None);
+        assert!(state.dirty);
+    }
+
+    #[test]
+    fn rotation_click_from_none_enables_per_part_mode_and_toggles_only_clicked_cut() {
+        let mut state = FreecutAppState::default();
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        state.project.settings.rotation_mode = RotationMode::None;
+        state.project.cut_pieces[1].can_rotate = false;
+        state.project.cut_pieces[1].pattern = PatternDirection::ParallelToLength;
+        state.dirty = false;
+
+        toggle_cut_rotation_from_ui(&mut state, 2);
+
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
+        assert_eq!(
+            state
+                .project
+                .cut_pieces
+                .iter()
+                .map(|cut| cut.can_rotate)
+                .collect::<Vec<_>>(),
+            [false, false, true]
+        );
+        assert_eq!(
+            state.project.cut_pieces[0].pattern,
+            PatternDirection::ParallelToLength
+        );
+        assert_eq!(
+            state.project.cut_pieces[1].pattern,
+            PatternDirection::ParallelToLength
+        );
+        assert_eq!(state.project.cut_pieces[2].pattern, PatternDirection::None);
+        assert!(state.dirty);
+    }
+
+    #[test]
     fn ui_font_size_offers_three_non_project_settings() {
         let mut state = FreecutAppState::default();
         let english = UiTexts::new(UiLanguage::English);
@@ -2891,6 +3505,14 @@ mod tests {
         assert_eq!(german.unit_setting_label(), "Einheit");
         assert_eq!(english.kerf_width_label(), "Kerf width");
         assert_eq!(german.kerf_width_label(), "Schnittfuge / Kerf");
+        assert_eq!(
+            english.rotation_mode_label(RotationMode::PerPart),
+            "Per part"
+        );
+        assert_eq!(
+            german.rotation_mode_label(RotationMode::PerPart),
+            "Pro Teil"
+        );
         assert_eq!(english.optimize_button(), "Optimize");
         assert_eq!(german.optimize_button(), "Optimieren");
         assert_eq!(english.ready_status(), "Ready");
@@ -2907,6 +3529,14 @@ mod tests {
         assert_eq!(german.cut_editor_heading(), "Zuschnitte");
         assert_eq!(english.pdf_export_heading(), "PDF export");
         assert_eq!(german.pdf_export_heading(), "PDF-Export");
+        assert_eq!(
+            english.open_pdf_after_export_label(),
+            "Open PDF after export"
+        );
+        assert_eq!(
+            german.open_pdf_after_export_label(),
+            "PDF nach dem Export öffnen"
+        );
         assert_eq!(english.solution_heading(), "Solution");
         assert_eq!(german.solution_heading(), "Lösung");
         assert_eq!(
@@ -2999,6 +3629,7 @@ mod tests {
         assert!(!state.dirty);
         assert_eq!(state.solution, solution_before);
         assert_eq!(state.project.settings.layout, LayoutKind::Guillotine);
+        assert_eq!(state.project.settings.rotation_mode, RotationMode::PerPart);
     }
 
     #[test]
@@ -3019,7 +3650,10 @@ mod tests {
 
     #[test]
     fn optimize_action_reports_no_solution_without_losing_message_on_validation_sync() {
-        let mut state = FreecutAppState::default();
+        let mut state = FreecutAppState {
+            optimizer_effort: OptimizerEffort::Fast,
+            ..FreecutAppState::default()
+        };
         add_default_stock_piece(&mut state);
         add_default_cut_piece(&mut state);
         state.project.stock_pieces[0].width = 50;
@@ -3063,6 +3697,7 @@ mod tests {
     fn optimize_action_uses_german_phase_two_status_text_when_selected() {
         let mut state = FreecutAppState {
             language: UiLanguage::German,
+            optimizer_effort: OptimizerEffort::Fast,
             ..FreecutAppState::default()
         };
         add_default_stock_piece(&mut state);
@@ -3090,7 +3725,8 @@ broken,0,20,1\n\
 valid2,30,40,2\n";
         let result = crate::import::import_project_csv(
             csv,
-            next_piece_id(&state.project).0,
+            next_stock_piece_id(&state.project).0,
+            next_cut_piece_id(&state.project).0,
             state.project.settings.unit,
         );
 
@@ -3111,7 +3747,7 @@ valid2,30,40,2\n";
     }
 
     #[test]
-    fn csv_import_from_state_path_reads_file_and_uses_next_piece_id() {
+    fn csv_import_from_state_path_uses_independent_cut_id() {
         let mut state = FreecutAppState::default();
         add_default_stock_piece(&mut state);
         state.dirty = false;
@@ -3129,7 +3765,8 @@ valid2,30,40,2\n";
         std::fs::remove_file(path).expect("remove csv fixture");
         assert_eq!(state.project.stock_pieces.len(), 1);
         assert_eq!(state.project.cut_pieces.len(), 1);
-        assert_eq!(state.project.cut_pieces[0].id, PieceId(2));
+        assert_eq!(state.project.stock_pieces[0].id, PieceId(1));
+        assert_eq!(state.project.cut_pieces[0].id, PieceId(1));
         assert_eq!(
             state.csv_import_report.as_deref(),
             Some("CSV import: 1 cut piece(s), 0 stock piece(s), 0 error(s)")
@@ -3149,7 +3786,8 @@ valid,10,20,1\n\
 broken,0,20,1\n";
         let result = crate::import::import_project_csv(
             csv,
-            next_piece_id(&state.project).0,
+            next_stock_piece_id(&state.project).0,
+            next_cut_piece_id(&state.project).0,
             state.project.settings.unit,
         );
 
@@ -3177,6 +3815,7 @@ broken,0,20,1\n";
         add_default_stock_piece(&mut saved_state);
         add_default_cut_piece(&mut saved_state);
         saved_state.project.name = "saved project".to_string();
+        saved_state.project.settings.open_pdf_after_export = true;
         saved_state.optimizer_effort = OptimizerEffort::Thorough;
         saved_state.project_path = path.to_string_lossy().to_string();
 
@@ -3195,6 +3834,7 @@ broken,0,20,1\n";
 
         std::fs::remove_file(path).expect("remove project fixture");
         assert_eq!(loaded_state.project, saved_state.project);
+        assert!(loaded_state.project.settings.open_pdf_after_export);
         assert_eq!(loaded_state.optimizer_effort, OptimizerEffort::Thorough);
         assert!(loaded_state.solution.is_none());
         assert_eq!(loaded_state.selection, UiSelection::default());
@@ -3276,6 +3916,65 @@ broken,0,20,1\n";
             .export_report
             .as_deref()
             .is_some_and(|message| message.starts_with("PDF exported:")));
+    }
+
+    #[test]
+    fn pdf_export_opens_the_file_when_the_preference_is_enabled() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        optimize_current_project(&mut state);
+        let path = std::env::temp_dir().join(format!(
+            "freecut-ui-open-after-export-{}.pdf",
+            std::process::id()
+        ));
+        let expected_path = path.to_string_lossy().into_owned();
+        state.export_path = expected_path.clone();
+        state.project.settings.open_pdf_after_export = true;
+        let mut opened_path = None;
+
+        export_solution_from_state_path_with_opener(&mut state, |opened| {
+            opened_path = Some(opened.to_string());
+            Ok(())
+        });
+
+        assert_eq!(opened_path.as_deref(), Some(expected_path.as_str()));
+        assert!(path.exists());
+        assert!(state.error_message.is_none());
+        assert!(state
+            .export_report
+            .as_deref()
+            .is_some_and(|message| message.starts_with("PDF exported and opened:")));
+        std::fs::remove_file(path).expect("remove exported pdf fixture");
+    }
+
+    #[test]
+    fn pdf_export_reports_when_opening_the_file_fails() {
+        let mut state = FreecutAppState::default();
+        add_default_stock_piece(&mut state);
+        add_default_cut_piece(&mut state);
+        optimize_current_project(&mut state);
+        let path = std::env::temp_dir().join(format!(
+            "freecut-ui-open-failure-export-{}.pdf",
+            std::process::id()
+        ));
+        state.export_path = path.to_string_lossy().into_owned();
+        state.project.settings.open_pdf_after_export = true;
+
+        export_solution_from_state_path_with_opener(&mut state, |_| {
+            Err(std::io::Error::other("viewer unavailable"))
+        });
+
+        assert!(path.exists());
+        assert!(state
+            .error_message
+            .as_deref()
+            .is_some_and(|message| message.contains("viewer unavailable")));
+        assert!(state
+            .export_report
+            .as_deref()
+            .is_some_and(|message| message.starts_with("PDF exported but could not be opened:")));
+        std::fs::remove_file(path).expect("remove exported pdf fixture");
     }
 
     #[test]
@@ -3649,7 +4348,7 @@ broken,0,20,1\n";
             rotated: false,
         };
 
-        assert_eq!(piece_label(&piece), "#7-3");
+        assert_eq!(piece.cut_instance_label(), "#7-3");
     }
 
     #[test]
@@ -3968,8 +4667,8 @@ broken,0,20,1\n";
                 width: 200,
                 length: 100,
                 placed_pieces: vec![
-                    placed_piece(PieceId(2), 0, 0, 0, 50, 50),
-                    placed_piece(PieceId(3), 0, 50, 0, 50, 50),
+                    placed_piece(PieceId(1), 0, 0, 0, 50, 50),
+                    placed_piece(PieceId(2), 0, 50, 0, 50, 50),
                 ],
                 waste: Vec::new(),
                 cutting_guide: None,
@@ -3999,7 +4698,7 @@ broken,0,20,1\n";
                 stock_id: PieceId(1),
                 width: 200,
                 length: 100,
-                placed_pieces: vec![placed_piece(PieceId(2), 3, 10, 20, 70, 30)],
+                placed_pieces: vec![placed_piece(PieceId(1), 3, 10, 20, 70, 30)],
                 waste: Vec::new(),
                 cutting_guide: None,
             }],
@@ -4012,6 +4711,7 @@ broken,0,20,1\n";
 
         assert_eq!(details.sheet_index, 0);
         assert_eq!(details.piece_index, 0);
+        assert_eq!(details.display_label, "1-1");
         assert_eq!(details.placed_piece.rect.x, 10);
         assert_eq!(details.cut_piece.expect("input cut").label, "door");
     }
